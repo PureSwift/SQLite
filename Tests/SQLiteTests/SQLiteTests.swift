@@ -13,10 +13,21 @@ import Testing
         #expect(connection.filename == path)
     }
     
-    @Test func openError() throws {
+    @Test func statementError() throws {
         let path = "/tmp/invalid.sqlite"
         let connection = try Connection(path: path, isReadOnly: true)
+        let sql = "SELECT COUNT(*) FROM abcdz"
+        do {
+            _ = try Statement(sql, connection: connection)
+        }
+        catch {
+            #expect(error.message == "Unable to initialize statement.")
+            #expect(error.statement == sql)
+            print(error)
+            return
+        }
         
+        Issue.record("Error not thrown")
     }
     
     @Test func getCount() throws {
