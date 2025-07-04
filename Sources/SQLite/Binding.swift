@@ -118,3 +118,73 @@ extension Int: BindingConvertible {
         .integer(self)
     }
 }
+
+// MARK: - Conversion
+
+internal extension Binding {
+    
+    static func integerCast<T: FixedWidthInteger>(_ value: T) -> Binding {
+        .integer(numericCast(value) as Int64)
+    }
+}
+
+extension FixedWidthInteger {
+
+    public var binding: Binding {
+        .integerCast(self)
+    }
+}
+
+public extension Binding {
+    
+    /// Returns the integer value of the data, performing conversions where possible.
+    ///
+    /// If the data has `REAL` or `TEXT` affinity, an attempt is made to interpret the value as an integer. `BLOB`
+    /// and `NULL` values always return `nil`.
+    var integer: Int64? {
+        switch self {
+        case .integer(let integer):
+            return integer
+        case .double(let double):
+            return Int64(double)
+        case .text(let string):
+            return Int64(string)
+        case .blob, .null:
+            return nil
+        }
+    }
+
+    /// Returns the real number value of the data, performing conversions where possible.
+    ///
+    /// If the data has `INTEGER` or `TEXT` affinity, an attempt is made to interpret the value as a `Double`. `BLOB`
+    /// and `NULL` values always return `nil`.
+    var double: Double? {
+        switch self {
+        case .integer(let integer):
+            return Double(integer)
+        case .double(let double):
+            return double
+        case .text(let string):
+            return Double(string)
+        case .blob, .null:
+            return nil
+        }
+    }
+
+    /// Returns the textual value of the data, performing conversions where possible.
+    ///
+    /// If the data has `INTEGER` or `REAL` affinity, the value is converted to text. `BLOB` and `NULL` values always
+    /// return `nil`.
+    var string: String? {
+        switch self {
+        case .integer(let integer):
+            return String(integer)
+        case .double(let double):
+            return String(double)
+        case .text(let string):
+            return string
+        case .blob, .null:
+            return nil
+        }
+    }
+}
