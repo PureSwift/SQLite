@@ -160,4 +160,14 @@ internal extension Statement.Handle {
         let hasMoreData = resultCode == SQLITE_ROW
         return .success(hasMoreData)
     }
+    
+    func readText(at index: Int32, connection: Connection.Handle) -> Result<String, SQLiteError> {
+        let string = sqlite3_column_text(pointer, index).flatMap { String(cString: $0) }
+        // check for errors
+        if let errorCode = connection.errorCode {
+            let error = connection.forceError(errorCode)
+            return .failure(error)
+        }
+        return .success(string ?? "")
+    }
 }
