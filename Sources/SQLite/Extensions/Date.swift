@@ -20,17 +20,48 @@ internal extension Date {
         if #available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *) {
             return self.ISO8601Format()
         } else {
-            return iso8601DateFormatter.string(from: self)
+            return Date.iso8601DateFormatter.string(from: self)
         }
     }
 }
 
-@available(macOS 10.12, *)
-nonisolated(unsafe) let iso8601DateFormatter: ISO8601DateFormatter = {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime]
-    formatter.timeZone = TimeZone(secondsFromGMT: 0)
-    return formatter
-}()
+internal extension Date {
+    
+    static var iso8601DateFormatter: ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }
+    
+    /// Matches dates from the `datetime()` function
+    ///
+    /// > Note: Because `ISO8601DateFormatter` isn't `Sendable`, we have to do the MUCH less efficient thing of creating
+    /// > a new formatter every time we want to use it instead of just caching one :(
+    static var dateTimeFormatter: ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [
+            .withFullDate,
+            .withDashSeparatorInDate,
+            .withSpaceBetweenDateAndTime,
+            .withTime,
+            .withColonSeparatorInTime
+        ]
+        return formatter
+    }
+
+    /// Matches dates from the `date()` function
+    ///
+    /// > Note: Because `ISO8601DateFormatter` isn't `Sendable`, we have to do the MUCH less efficient thing of creating
+    /// > a new formatter every time we want to use it instead of just caching one :(
+    static var dateFormatter: ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [
+            .withFullDate,
+            .withDashSeparatorInDate
+        ]
+        return formatter
+    }
+}
 
 #endif
