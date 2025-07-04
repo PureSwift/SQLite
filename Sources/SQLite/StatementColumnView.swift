@@ -7,20 +7,45 @@
 
 public extension Statement {
     
-    func withColumns<T>(_ block: (borrowing ColumnView) -> (T)) -> T {
-        let view = ColumnView(handle: handle)
-        return block(view)
+    func withColumns<T>(
+        _ connection: borrowing Connection,
+        limit: UInt? = nil,
+        _ block: (borrowing Column) throws(SQLiteError) -> (T)
+    ) throws(SQLiteError) -> [T] {
+        let statement = handle
+        let connection = connection.handle
+        let column = Column(
+            statement: statement,
+            connection: connection
+        )
+        var results = [T]()
+        if let limit {
+            results.reserveCapacity(Int(limit))
+        }
+        while try handle.step(connection: connection).get() {
+            let result = try block(column)
+            results.append(result)
+            // stop aggregating results
+            if let limit {
+                guard results.count <= limit else {
+                    return results
+                }
+            }
+        }
+        return results
     }
     
-    struct ColumnView {
+    struct Column {
         
-        let handle: Statement.Handle
+        let statement: Statement.Handle
+        
+        let connection: Connection.Handle
     }
 }
 
 // MARK: - RandomAccessCollection
 
-extension Statement.ColumnView: RandomAccessCollection {
+extension Statement.Column: RandomAccessCollection {
     
     public typealias Element = String
     
@@ -31,7 +56,7 @@ extension Statement.ColumnView: RandomAccessCollection {
     }
     
     public var count: Int {
-        Int(handle.columnCount)
+        Int(statement.columnCount)
     }
     
     public var startIndex: Int { 0 }
@@ -40,7 +65,7 @@ extension Statement.ColumnView: RandomAccessCollection {
     
     public subscript(position: Int) -> Element {
         precondition(position >= 0 && position < count, "Index out of bounds")
-        return handle.columnName(at: Int32(position))
+        return statement.columnName(at: Int32(position))
     }
     
     public func index(after i: Int) -> Int {
