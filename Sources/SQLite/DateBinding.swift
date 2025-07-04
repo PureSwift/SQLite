@@ -49,29 +49,43 @@ public extension Binding.DateFormat {
     }
 }
 
-public extension Binding.DateFormat {
-    
-    
-}
-
 // MARK: - Formatting
 
 #if canImport(Foundation)
 
+public extension Binding {
+    
+    static func date(_ date: Date, type: Binding.DateFormat = .integer) -> Binding {
+        type.format(date)
+    }
+}
+
 public extension Binding.DateFormat {
     
-    @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
+    /// TEXT as ISO8601 strings ("YYYY-MM-DD HH:MM:SS.SSS")
     static func format(text date: Date) -> String {
-        date.ISO8601Format(.iso8601)
+        date.iso8601
     }
     
+    /// INTEGER as Unix Time, the number of seconds since 1970-01-01 00:00:00 UTC.
     static func format(integer date: Date) -> Int64 {
         Int64(date.timeIntervalSince1970)
     }
     
-    static func format(real date: Date) -> Int64 {
-        // TODO: Julian date
-        fatalError("Julian date not implemented")
+    /// REAL as Julian day numbers, the number of days since noon in Greenwich on November 24, 4714 B.C. according to the proleptic Gregorian calendar.
+    static func format(real date: Date) -> Double {
+        date.julian
+    }
+    
+    func format(_ date: Date) -> Binding {
+        switch self {
+        case .text:
+            return Self.format(text: date).binding
+        case .real:
+            return Self.format(real: date).binding
+        case .integer:
+            return Self.format(integer: date).binding
+        }
     }
 }
 
