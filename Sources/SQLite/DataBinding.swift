@@ -8,29 +8,18 @@
 #if canImport(Foundation)
 import Foundation
 
-extension Data {
+extension Data: BindingConvertible {
     
-    public func withBinding<Result>(_ body: (_ buffer: Binding) -> Result) -> Result {
-        return withUnsafeBytes { buffer in
-            body(buffer.binding)
+    public var binding: Binding {
+        guard isEmpty == false else {
+            return .blob(.zero(0))
         }
+        return .blob(.pointer({ body in
+            withUnsafeBytes { buffer in
+                body(buffer)
+            }
+        }))
     }
 }
 
 #endif
-
-@available(macOS 10.14.4, *)
-extension RawSpan {
-    /*
-    public func withBinding<E, Result>(_ body: (_ buffer: Binding) throws(E) -> Result) throws(E) -> Result where E : Error, Result : ~Copyable {
-        return try withUnsafeBytes { buffer in
-            try body(buffer.binding)
-        }
-    }
-    */
-    public func withBinding<Result>(_ body: (_ buffer: Binding) -> Result) -> Result where Result : ~Copyable {
-        return withUnsafeBytes { buffer in
-            body(buffer.binding)
-        }
-    }
-}
