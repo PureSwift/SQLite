@@ -28,6 +28,18 @@ import Testing
         #expect(connection.filename == path)
         let sql = "SELECT COUNT(*) FROM site_amenities"
         let statement = try Statement(sql, connection: connection)
+        var count = 0
+        try connection.execute(statement) { (row: consuming Row) throws(SQLiteError) -> () in
+            count = try row.read(at: 0) { value in
+                switch value {
+                case let .integer(integer):
+                    return Int(integer)
+                default:
+                    return 0
+                }
+            }
+        }
+        #expect(count == 5932)
     }
     
     @Test func iterateTextRows() throws {
