@@ -15,9 +15,17 @@ import SwiftToolchainCSQLite
 import SQLite3
 #endif
 
+/// SQLite Database Connection
 public struct Connection: ~Copyable {
     
     let handle: Handle
+    
+    /// Whether or not the database will return extended error codes when errors are handled.
+    public var usesExtendedErrorCodes: Bool = false {
+        didSet {
+            try! handle.setUsesExtendedErrorCodes(usesExtendedErrorCodes).get()
+        }
+    }
     
     public init(
         path: String,
@@ -31,10 +39,22 @@ public struct Connection: ~Copyable {
     }
 }
 
+// MARK: - Properties
+
 public extension Connection {
     
     static var isThreadSafe: Bool {
         sqlite3_threadsafe() != 0
+    }
+    
+    /// Whether or not the database was opened in a read-only state.
+    var isReadonly: Bool {
+        handle.isReadonly
+    }
+    
+    /// The last rowid inserted into the database via this connection.
+    var lastInsertRowID: Int64 {
+        handle.lastInsertRowID
     }
     
     /// The last number of changes (inserts, updates, or deletes) made to the
@@ -53,6 +73,8 @@ public extension Connection {
         handle.filename
     }
 }
+
+// MARK: - Supporting Types
 
 internal extension Connection {
     
@@ -77,15 +99,61 @@ internal extension Connection.Handle {
             flags | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_URI,
             nil
         )
-        guard errorCode == SQLITE_OK else {
-            return .failure(SQLiteError(errorCode: errorCode))
-        }
         guard let pointer else {
             assertionFailure("Unable to unwrap pointer")
-            return .failure(.init(errorCode: SQLITE_ERROR))
+            return .failure(.init(errorCode: .init(errorCode), message: "Unable to initialize connection.", connection: path))
         }
         let handle = Connection.Handle(pointer: pointer)
+        guard errorCode == SQLITE_OK else {
+            let error = handle.forceError(SQLiteError.ErrorCode(errorCode))
+            return .failure(error)
+        }
         return .success(handle)
+    }
+    
+    func setUsesExtendedErrorCodes(_ usesExtendedErrorCodes: Bool) -> Result<Void, SQLiteError> {
+        check(sqlite3_extended_result_codes(pointer, usesExtendedErrorCodes ? 1 : 0))
+    }
+    
+    var errorCode: SQLiteError.ErrorCode? {
+        .init(rawValue: sqlite3_errcode(pointer))
+    }
+    
+    var errorMessage: String? {
+        sqlite3_errmsg(pointer).flatMap { String(cString: $0) }
+    }
+    
+    func check(
+        _ resultCode: Int32,
+        file: StaticString = #file,
+        function: StaticString = #function
+    ) -> Result<Void, SQLiteError>  {
+        guard let errorCode = SQLiteError.ErrorCode(rawValue: resultCode) else {
+            return .success(())
+        }
+        let error = forceError(errorCode, file: file, function: function)
+        return .failure(error)
+    }
+    
+    func forceError(
+        _ errorCode: SQLiteError.ErrorCode,
+        file: StaticString = #file,
+        function: StaticString = #function
+    ) -> SQLiteError  {
+        let errorMessage = errorMessage ?? "Unknown error"
+        let filename = self.filename
+        let error = SQLiteError(errorCode: errorCode, message: errorMessage, connection: filename, file: file, function: function)
+        return error
+    }
+    
+    /// Whether or not the database was opened in a read-only state.
+    var isReadonly: Bool {
+        sqlite3_db_readonly(pointer, nil) == 1
+    }
+    
+    /// The last rowid inserted into the database via this connection.
+    var lastInsertRowID: Int64 {
+        sqlite3_last_insert_rowid(pointer)
     }
     
     /// The last number of changes (inserts, updates, or deletes) made to the
