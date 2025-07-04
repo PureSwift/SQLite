@@ -190,4 +190,23 @@ internal extension Statement.Handle {
         }
         return .success(value)
     }
+    
+    func readType(at index: Int32, connection: Connection.Handle) -> Result<Column.ValueType, SQLiteError> {
+        let type = sqlite3_column_type(pointer, index)
+        switch type {
+        case SQLITE_INTEGER:
+            return .success(.integer)
+        case SQLITE_FLOAT:
+            return .success(.double)
+        case SQLITE_TEXT:
+            return .success(.text)
+        case SQLITE_BLOB:
+            return .success(.blob)
+        case SQLITE_NULL:
+            return .success(.null)
+        default:
+            let error = connection.forceError(connection.errorCode ?? .init(SQLITE_ERROR))
+            return .failure(error)
+        }
+    }
 }
