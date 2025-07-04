@@ -35,14 +35,19 @@ public extension Statement {
      Return the number of columns in the result set returned by the prepared statement. If this routine returns 0, that means the prepared statement returns no data (for example an UPDATE). However, just because this routine returns a positive number does not mean that one or more rows of data will be returned. A SELECT statement will always have a positive sqlite3_column_count() but depending on the WHERE clause constraints and the table content, it might return no rows.
      */
     var columnCount: Int {
-        handle.columnCount
+        Int(handle.columnCount)
     }
     
     /**
      Column Names In A Result Set
      */
     func columnName(at index: Int) -> String {
-        handle.columnName(at: index)
+        handle.columnName(at: Int32(index))
+    }
+    
+    func bind(_ binding: Binding, at index: Int) {
+        let index = Int32(index)
+        return handle.bind(binding, at: index)
     }
 }
 
@@ -57,15 +62,76 @@ internal extension Statement {
 
 internal extension Statement.Handle {
     
-    func finalize() {
+    consuming func finalize() {
         sqlite3_finalize(pointer)
     }
     
-    var columnCount: Int {
-        Int(sqlite3_column_count(pointer))
+    var columnCount: Int32 {
+        sqlite3_column_count(pointer)
     }
     
-    func columnName(at index: Int) -> String {
-        String(cString: sqlite3_column_name(pointer, Int32(index)))
+    func columnName(at index: Int32) -> String {
+        String(cString: sqlite3_column_name(pointer, index))
+    }
+    
+    func bindNull(at index: Int32) {
+        sqlite3_bind_null(pointer, index)
+    }
+    
+    /// Binds a BLOB of length N that is filled with zeroes. A zeroblob uses a fixed amount of memory (just an integer to hold its size) while it is being processed.
+    /// Zeroblobs are intended to serve as placeholders for BLOBs whose content is later written using incremental BLOB I/O routines.
+    ///
+    /// A negative value for the zeroblob results in a zero-length BLOB.
+    func bindZeroBlob(at index: Int32, count: Int32) {
+        sqlite3_bind_zeroblob(pointer, index, count)
+    }
+    
+    func bindBlob(_ rawBytes: UnsafeRawPointer, count: Int32, at index: Int32) {
+        sqlite3_bind_blob(pointer, index, rawBytes, count, SQLITE_TRANSIENT)
+    }
+    
+    @available(macOS 10.14.4, iOS 12.2, *)
+    func bindBlob(_ span: RawSpan, at index: Int32) {
+        let count = span.byteCount
+        span.withUnsafeBytes { buffer in
+            bindBlob(buffer.baseAddress!, count: Int32(count), at: index)
+        }
+    }
+    
+    func bindDouble(_ value: Double, at index: Int32) {
+        sqlite3_bind_double(pointer, index, value)
+    }
+    
+    func bindFloat(_ value: Float, at index: Int32) {
+        bindDouble(Double(value), at: index)
+    }
+    
+    func bindInt(_ value: Int64, at index: Int32) {
+        sqlite3_bind_int64(pointer, index, value)
+    }
+    
+    func bindInt(_ value: Int, at index: Int32) {
+        bindInt(Int64(value), at: index)
+    }
+    
+    func bindText(_ value: String, at index: Int32) {
+        sqlite3_bind_text(pointer, index, value, -1, SQLITE_TRANSIENT)
+    }
+    
+    func bind(_ binding: Binding, at index: Int32) {
+        switch binding {
+        case .null:
+            bindNull(at: index)
+        case let .integer(value):
+            bindInt(value, at: index)
+        case let .double(value):
+            bindDouble(value, at: index)
+        case let .text(value):
+            bindText(value, at: index)
+        case let .blob(.zero(count)):
+            bindZeroBlob(at: index, count: count)
+        case let .blob(.pointer(pointer, count)):
+            bindBlob(pointer, count: count, at: index)
+        }
     }
 }
