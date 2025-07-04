@@ -74,6 +74,37 @@ public extension Connection {
     }
 }
 
+// MARK: - Methods
+
+public extension Connection {
+    
+    /// Execute the statement and iterate the rows.
+    func execute(
+        _ statement: consuming Statement,
+        limit: UInt? = nil,
+        _ block: (consuming Row) throws(SQLiteError) -> ()
+    ) throws(SQLiteError) {
+        var index = 0
+        while try statement.handle.step(connection: self.handle).get() {
+            let row = Row(
+                index: index,
+                statement: statement,
+                connection: self
+            )
+            // read data
+            try block(row)
+            // stop aggregating results
+            if let limit {
+                guard index < limit else {
+                    return
+                }
+            }
+            // increment index
+            index += 1
+        }
+    }
+}
+
 // MARK: - Supporting Types
 
 internal extension Connection {
