@@ -26,6 +26,15 @@ public struct Row: ~Copyable {
     }
 }
 
+extension Row {
+    
+    public typealias ID = Int
+    
+    public var id: Int {
+        index
+    }
+}
+
 public extension Row {
     
     /// `Sequence` view for convenience.
@@ -50,7 +59,7 @@ public extension Row {
     var endIndex: Int { count }
     
     /// Read the data type.
-    func readType(at index: Int) throws(SQLiteError) -> Column.ValueType {
+    func readType(at index: Column.ID) throws(SQLiteError) -> Column.ValueType {
         try statement.readType(at: Int32(index), connection: connection).get()
     }
 }
@@ -61,7 +70,7 @@ public extension Row {
     
     struct Columns {
         
-        let row: Int
+        public let row: Row.ID
         
         internal let statement: Statement.Handle
         
