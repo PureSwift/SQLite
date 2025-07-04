@@ -12,6 +12,32 @@ import Testing
         let connection = try Connection(path: path)
         #expect(connection.filename == path)
     }
+    
+    @Test func openError() throws {
+        let path = "/tmp/invalid.sqlite"
+        let connection = try Connection(path: path, isReadOnly: true)
+        
+    }
+    
+    @Test func getCount() throws {
+        let fileName = "data.sqlite"
+        guard let path = path(for: fileName) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        let connection = try Connection(path: path)
+        #expect(connection.filename == path)
+        let sql = "SELECT COUNT(*) FROM site_amenities"
+        let statement = try Statement(sql, connection: connection)
+        // compile statement
+        while try statement.handle.step(connection: connection.handle).get() {
+            print("stepped")
+            statement.withColumns {
+                for column in $0 {
+                    print(column)
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Supporting Functions

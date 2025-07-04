@@ -20,6 +20,6 @@ public struct DataFile: ~Copyable {
     
     public init(path: String) throws(SQLiteError) {
         self.path = path
-        self.connection = try SQLite.Connection(path: path)
+        self.connection = try SQLite.Connection(path: path, isReadOnly: true)
     }
 }
