@@ -17,14 +17,14 @@ import SQLite3
 
 public struct Connection: ~Copyable {
     
-    let handle: OpaquePointer
+    let handle: Handle
     
-    init(handle: OpaquePointer) {
-        self.handle = handle
+    public init(path: String) throws(SQLiteError) {
+        self.handle = try Handle(path: path)
     }
     
     deinit {
-        sqlite3_close(handle)
+        handle.close()
     }
 }
 
@@ -32,5 +32,24 @@ public extension Connection {
     
     static var isThreadSafe: Bool {
         sqlite3_threadsafe() != 0
+    }
+}
+
+internal extension Connection {
+    
+    struct Handle {
+        
+        let pointer: OpaquePointer
+    }
+}
+
+internal extension Connection.Handle {
+    
+    consuming func close() {
+        sqlite3_close(pointer)
+    }
+    
+    init(path: String) throws(SQLiteError) {
+        fatalError()
     }
 }
