@@ -20,12 +20,20 @@ public struct Statement: ~Copyable {
     
     let handle: Handle
     
+    public init(_ sql: String, connection: borrowing Connection) throws(SQLiteError) {
+        self.handle = try Handle.prepare(sql, connection: connection.handle).get()
+    }
+    
     deinit {
         handle.finalize()
     }
 }
 
 public extension Statement {
+    
+    var sql: String {
+        handle.sql
+    }
     
     /**
      Return the number of columns in the result set returned by the prepared statement. If this routine returns 0, that means the prepared statement returns no data (for example an UPDATE). However, just because this routine returns a positive number does not mean that one or more rows of data will be returned. A SELECT statement will always have a positive sqlite3_column_count() but depending on the WHERE clause constraints and the table content, it might return no rows.
@@ -42,7 +50,7 @@ public extension Statement {
     }
     
     /// Bind data at the specified index.
-    func bind(_ binding: Binding, at index: Int, connection: borrowing Connection) throws(SQLiteError) {
+    mutating func bind(_ binding: Binding, at index: Int, connection: borrowing Connection) throws(SQLiteError) {
         let index = Int32(index)
         return try handle.bind(binding, at: index, connection: connection.handle).get()
     }
@@ -61,6 +69,28 @@ internal extension Statement.Handle {
     
     consuming func finalize() {
         sqlite3_finalize(pointer)
+    }
+    
+    static func prepare(
+        _ sql: String,
+        connection: Connection.Handle,
+    ) -> Result<Statement.Handle, SQLiteError> {
+        var pointer: OpaquePointer?
+        let errorCode = sqlite3_prepare_v2(connection.pointer, sql, -1, &pointer, nil)
+        guard let pointer else {
+            assertionFailure("Unable to unwrap pointer")
+            return .failure(SQLiteError(errorCode: SQLiteError.ErrorCode(errorCode), message: "Unable to initialize statement.", connection: connection.filename))
+        }
+        let handle = Statement.Handle(pointer: pointer)
+        guard errorCode == SQLITE_OK else {
+            let error = connection.forceError(SQLiteError.ErrorCode(errorCode))
+            return .failure(error)
+        }
+        return .success(handle)
+    }
+    
+    var sql: String {
+        String(cString: sqlite3_sql(pointer))
     }
     
     var columnCount: Int32 {
@@ -118,7 +148,16 @@ internal extension Statement.Handle {
         }
     }
     
-    func prepare() {
-        
+    func step(connection: Connection.Handle) -> Result<Bool, SQLiteError> {
+        // peform step
+        let resultCode = sqlite3_step(pointer)
+        // check for error
+        if let errorCode = SQLiteError.ErrorCode(rawValue: resultCode) {
+            let error = connection.forceError(errorCode)
+            return .failure(error)
+        }
+        // return if done
+        let hasMoreData = resultCode == SQLITE_ROW
+        return .success(hasMoreData)
     }
 }

@@ -14,7 +14,7 @@ public extension Statement {
     
     struct ColumnView {
         
-        let handle: Handle
+        let handle: Statement.Handle
     }
 }
 
