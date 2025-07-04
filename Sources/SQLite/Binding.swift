@@ -46,3 +46,75 @@ public extension Binding {
         .integer(Int64(value))
     }
 }
+
+// MARK: - Protocol
+
+public protocol BindingConvertible {
+    
+    var binding: Binding { get }
+}
+
+extension Optional where Wrapped: BindingConvertible {
+    
+    public var binding: Binding {
+        switch self {
+        case .none:
+            return .null
+        case .some(let wrapped):
+            return wrapped.binding
+        }
+    }
+}
+
+extension Int64: BindingConvertible {
+    
+    public var binding: Binding {
+        .integer(self)
+    }
+}
+
+extension Double: BindingConvertible {
+    
+    public var binding: Binding {
+        .double(self)
+    }
+}
+
+extension String: BindingConvertible {
+    
+    public var binding: Binding {
+        .text(self)
+    }
+}
+
+extension UnsafeRawBufferPointer: BindingConvertible {
+    
+    public var binding: Binding {
+        let count = self.count
+        guard let baseAddress = baseAddress, count > 0 else {
+            return .blob(.zero(0))
+        }
+        return .blob(.pointer(baseAddress, Int32(count)))
+    }
+}
+
+extension Bool: BindingConvertible {
+    
+    public var binding: Binding {
+        .bool(self)
+    }
+}
+
+extension Float: BindingConvertible {
+    
+    public var binding: Binding {
+        .float(self)
+    }
+}
+
+extension Int: BindingConvertible {
+    
+    public var binding: Binding {
+        .integer(self)
+    }
+}
