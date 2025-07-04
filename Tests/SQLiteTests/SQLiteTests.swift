@@ -39,7 +39,6 @@ import Testing
         #expect(connection.filename == path)
         let sql = "SELECT STATE_NM, STATE_AB FROM state_codes"
         let statement = try Statement(sql, connection: connection)
-        let statementHandle = statement.handle
         // compile statement
         var results = [[String: String]]()
         try connection.execute(statement) { (row: consuming Row) throws(SQLiteError) -> () in
@@ -47,8 +46,15 @@ import Testing
             var object = [String: String]()
             for (columnIndex, column) in row.columns.enumerated() {
                 #expect(columnIndex == column.index)
-                let text = try statementHandle.readText(at: Int32(column.index), connection: connection.handle).get()
-                object[column.name] = text
+                let string: String? = try row.read(at: columnIndex) {
+                    switch $0 {
+                    case let .text(string):
+                        return string
+                    default:
+                        return nil
+                    }
+                }
+                object[column.name] = string
             }
             results.append(object)
         }
