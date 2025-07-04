@@ -45,9 +45,11 @@ public extension Binding.UUIDFormat {
         uuid.uuidString
     }
     
-    static func format(blob uuid: UUID) -> UnsafeRawBufferPointer {
-        withUnsafeBytes(of: uuid.uuid) { buffer in
-            return buffer
+    static func format(blob uuid: UUID) -> Binding.Blob {
+        .pointer { body in
+            withUnsafeBytes(of: uuid.uuid) { buffer in
+                body(buffer)
+            }
         }
     }
     
@@ -56,7 +58,7 @@ public extension Binding.UUIDFormat {
         case .text:
             return Self.format(text: uuid).binding
         case .blob:
-            return Self.format(blob: uuid).binding
+            return .blob(Self.format(blob: uuid))
         }
     }
 }
