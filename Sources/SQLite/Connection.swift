@@ -156,25 +156,33 @@ internal extension Connection.Handle {
     
     func check(
         _ resultCode: Int32,
+        statement: String? = nil,
         file: StaticString = #file,
         function: StaticString = #function
     ) -> Result<Void, SQLiteError>  {
         guard let errorCode = SQLiteError.ErrorCode(rawValue: resultCode) else {
             return .success(())
         }
-        let error = forceError(errorCode, file: file, function: function)
+        let error = forceError(errorCode, statement: statement, file: file, function: function)
         return .failure(error)
     }
     
     func forceError(
         _ errorCode: SQLiteError.ErrorCode,
+        statement: String? = nil,
         file: StaticString = #file,
         function: StaticString = #function
     ) -> SQLiteError  {
-        let errorMessage = errorMessage ?? "Unknown error"
+        let errorMessage = self.errorMessage ?? "Unknown error"
         let filename = self.filename
-        let error = SQLiteError(errorCode: errorCode, message: errorMessage, connection: filename, file: file, function: function)
-        return error
+        return SQLiteError(
+            errorCode: errorCode,
+            message: errorMessage,
+            connection: filename,
+            statement: statement,
+            file: file,
+            function: function
+        )
     }
     
     /// Whether or not the database was opened in a read-only state.

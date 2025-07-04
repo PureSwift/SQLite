@@ -24,6 +24,8 @@ public struct SQLiteError: Error {
     
     public let connection: String
     
+    public let statement: String?
+    
     public let file: StaticString
     
     public let function: StaticString
@@ -32,6 +34,7 @@ public struct SQLiteError: Error {
         errorCode: ErrorCode,
         message: String,
         connection: String,
+        statement: String? = nil,
         file: StaticString = #file,
         function: StaticString = #function
     ) {
@@ -40,6 +43,7 @@ public struct SQLiteError: Error {
         self.file = file
         self.function = function
         self.connection = connection
+        self.statement = statement
     }
 }
 

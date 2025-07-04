@@ -78,8 +78,7 @@ internal extension Statement.Handle {
         var pointer: OpaquePointer?
         let errorCode = sqlite3_prepare_v2(connection.pointer, sql, -1, &pointer, nil)
         guard let pointer else {
-            assertionFailure("Unable to unwrap pointer")
-            return .failure(SQLiteError(errorCode: SQLiteError.ErrorCode(errorCode), message: "Unable to initialize statement.", connection: connection.filename))
+            return .failure(SQLiteError(errorCode: SQLiteError.ErrorCode(errorCode), message: "Unable to initialize statement.", connection: connection.filename, statement: sql))
         }
         let handle = Statement.Handle(pointer: pointer)
         guard errorCode == SQLITE_OK else {
@@ -102,7 +101,7 @@ internal extension Statement.Handle {
     }
     
     func bindNull(at index: Int32, connection: Connection.Handle) -> Result<Void, SQLiteError> {
-        connection.check(sqlite3_bind_null(pointer, index))
+        connection.check(sqlite3_bind_null(pointer, index), statement: sql)
     }
     
     /// Binds a BLOB of length N that is filled with zeroes. A zeroblob uses a fixed amount of memory (just an integer to hold its size) while it is being processed.
@@ -110,23 +109,23 @@ internal extension Statement.Handle {
     ///
     /// A negative value for the zeroblob results in a zero-length BLOB.
     func bindZeroBlob(at index: Int32, count: Int32, connection: Connection.Handle) -> Result<Void, SQLiteError> {
-        connection.check(sqlite3_bind_zeroblob(pointer, index, count))
+        connection.check(sqlite3_bind_zeroblob(pointer, index, count), statement: sql)
     }
     
     func bindBlob(_ rawBytes: UnsafeRawPointer, count: Int32, at index: Int32, connection: Connection.Handle) -> Result<Void, SQLiteError> {
-        connection.check(sqlite3_bind_blob(pointer, index, rawBytes, count, SQLITE_TRANSIENT))
+        connection.check(sqlite3_bind_blob(pointer, index, rawBytes, count, SQLITE_TRANSIENT), statement: sql)
     }
     
     func bindDouble(_ value: Double, at index: Int32, connection: Connection.Handle) -> Result<Void, SQLiteError> {
-        connection.check(sqlite3_bind_double(pointer, index, value))
+        connection.check(sqlite3_bind_double(pointer, index, value), statement: sql)
     }
     
     func bindInt(_ value: Int64, at index: Int32, connection: Connection.Handle) -> Result<Void, SQLiteError> {
-        connection.check(sqlite3_bind_int64(pointer, index, value))
+        connection.check(sqlite3_bind_int64(pointer, index, value), statement: sql)
     }
     
     func bindText(_ value: String, at index: Int32, connection: Connection.Handle) -> Result<Void, SQLiteError> {
-        connection.check(sqlite3_bind_text(pointer, index, value, -1, SQLITE_TRANSIENT))
+        connection.check(sqlite3_bind_text(pointer, index, value, -1, SQLITE_TRANSIENT), statement: sql)
     }
     
     func bind(_ binding: Binding, at index: Int32, connection: Connection.Handle) -> Result<Void, SQLiteError> {
@@ -153,7 +152,7 @@ internal extension Statement.Handle {
         let resultCode = sqlite3_step(pointer)
         // check for error
         if let errorCode = SQLiteError.ErrorCode(rawValue: resultCode) {
-            let error = connection.forceError(errorCode)
+            let error = connection.forceError(errorCode, statement: sql)
             return .failure(error)
         }
         // return if done
@@ -165,7 +164,7 @@ internal extension Statement.Handle {
         let string = sqlite3_column_text(pointer, index).flatMap { String(cString: $0) }
         // check for errors
         if let errorCode = connection.errorCode {
-            let error = connection.forceError(errorCode)
+            let error = connection.forceError(errorCode, statement: sql)
             return .failure(error)
         }
         return .success(string ?? "")
@@ -175,7 +174,7 @@ internal extension Statement.Handle {
         let value = sqlite3_column_int64(pointer, index)
         // check for errors
         if let errorCode = connection.errorCode {
-            let error = connection.forceError(errorCode)
+            let error = connection.forceError(errorCode, statement: sql)
             return .failure(error)
         }
         return .success(value)
@@ -185,7 +184,7 @@ internal extension Statement.Handle {
         let value = sqlite3_column_double(pointer, index)
         // check for errors
         if let errorCode = connection.errorCode {
-            let error = connection.forceError(errorCode)
+            let error = connection.forceError(errorCode, statement: sql)
             return .failure(error)
         }
         return .success(value)
@@ -193,12 +192,12 @@ internal extension Statement.Handle {
     
     func readBlob(at index: Int32, connection: Connection.Handle) -> Result<UnsafeRawPointer, SQLiteError> {
         guard let value = sqlite3_column_blob(pointer, index) else {
-            let error = connection.forceError(connection.errorCode ?? .init(SQLITE_ERROR))
+            let error = connection.forceError(connection.errorCode ?? .init(SQLITE_ERROR), statement: sql)
             return .failure(error)
         }
         // check for errors
         if let errorCode = connection.errorCode {
-            let error = connection.forceError(errorCode)
+            let error = connection.forceError(errorCode, statement: sql)
             return .failure(error)
         }
         return .success(value)
@@ -208,7 +207,7 @@ internal extension Statement.Handle {
         let value = sqlite3_column_bytes(pointer, index)
         // check for errors
         if let errorCode = connection.errorCode {
-            let error = connection.forceError(errorCode)
+            let error = connection.forceError(errorCode, statement: sql)
             return .failure(error)
         }
         return .success(value)
@@ -228,7 +227,7 @@ internal extension Statement.Handle {
         case SQLITE_NULL:
             return .success(.null)
         default:
-            let error = connection.forceError(connection.errorCode ?? .init(SQLITE_ERROR))
+            let error = connection.forceError(connection.errorCode ?? .init(SQLITE_ERROR), statement: sql)
             return .failure(error)
         }
     }
