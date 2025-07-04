@@ -36,18 +36,16 @@ public extension Column {
 
 public extension Column {
     
-    @available(macOS 10.14.4, iOS 12.2, watchOS 5.2, tvOS 12.2, visionOS 1.1, *)
     enum Value: ~Escapable {
         
         case null
-        case blob(RawSpan)
+        case blob(UnsafeRawBufferPointer)
         case double(Double)
         case integer(Int64)
         case text(String)
     }
 }
 
-@available(macOS 10.14.4, iOS 12.2, watchOS 5.2, tvOS 12.2, visionOS 1.1, *)
 public extension Column.Value {
     
     var type: Column.ValueType {
@@ -66,12 +64,11 @@ public extension Column.Value {
     }
 }
 
-@available(macOS 10.14.4, iOS 12.2, watchOS 5.2, tvOS 12.2, visionOS 1.1, *)
 public extension Row {
     
     /// Reads the value at the specified column index.
     func read<T>(
-        at index: Int,
+        at index: Column.ID,
         _ block: (consuming Column.Value) -> T
     ) throws(SQLiteError) -> T {
         // read type
@@ -92,8 +89,15 @@ public extension Row {
             let string = try statement.readText(at: index, connection: connection).get()
             value = .text(string)
         case .blob:
-            // TODO: Read binary data
-            fatalError()
+            let size = try statement.readBlobSize(at: index, connection: connection).get()
+            let bufferPointer: UnsafeRawBufferPointer
+            if size > 0 {
+                let pointer = try statement.readBlob(at: index, connection: connection).get()
+                bufferPointer = UnsafeRawBufferPointer(start: pointer, count: Int(size))
+            } else {
+                bufferPointer = UnsafeRawBufferPointer(start: nil, count: 0)
+            }
+            value = .blob(bufferPointer)
         }
         // convert value
         return block(value)

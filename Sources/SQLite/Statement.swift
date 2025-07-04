@@ -191,6 +191,29 @@ internal extension Statement.Handle {
         return .success(value)
     }
     
+    func readBlob(at index: Int32, connection: Connection.Handle) -> Result<UnsafeRawPointer, SQLiteError> {
+        guard let value = sqlite3_column_blob(pointer, index) else {
+            let error = connection.forceError(connection.errorCode ?? .init(SQLITE_ERROR))
+            return .failure(error)
+        }
+        // check for errors
+        if let errorCode = connection.errorCode {
+            let error = connection.forceError(errorCode)
+            return .failure(error)
+        }
+        return .success(value)
+    }
+    
+    func readBlobSize(at index: Int32, connection: Connection.Handle) -> Result<Int32, SQLiteError> {
+        let value = sqlite3_column_bytes(pointer, index)
+        // check for errors
+        if let errorCode = connection.errorCode {
+            let error = connection.forceError(errorCode)
+            return .failure(error)
+        }
+        return .success(value)
+    }
+    
     func readType(at index: Int32, connection: Connection.Handle) -> Result<Column.ValueType, SQLiteError> {
         let type = sqlite3_column_type(pointer, index)
         switch type {
