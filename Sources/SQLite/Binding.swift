@@ -6,7 +6,7 @@
 //
 
 /// SQLite Binding
-public enum Binding: Equatable, Hashable {
+public enum Binding: Sendable {
     
     case null
     case blob(Blob)
@@ -18,13 +18,13 @@ public enum Binding: Equatable, Hashable {
 public extension Binding {
     
     /// SQLite Binding Blob
-    enum Blob: Equatable, Hashable {
+    enum Blob: Sendable {
         
         /// Binds a BLOB of length N that is filled with zeroes.
         case zero(Int32)
         
         /// Data pointer
-        case pointer(UnsafeRawPointer, Int32)
+        case pointer(@Sendable ((UnsafeRawBufferPointer) -> (Result<Void, SQLiteError>)) -> (Result<Void, SQLiteError>))
     }
 }
 
@@ -84,17 +84,6 @@ extension String: BindingConvertible {
     
     public var binding: Binding {
         .text(self)
-    }
-}
-
-extension UnsafeRawBufferPointer: BindingConvertible {
-    
-    public var binding: Binding {
-        let count = self.count
-        guard let baseAddress = baseAddress, count > 0 else {
-            return .blob(.zero(0))
-        }
-        return .blob(.pointer(baseAddress, Int32(count)))
     }
 }
 
