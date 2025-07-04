@@ -15,12 +15,10 @@ public extension Statement {
     struct ColumnView {
         
         let handle: Handle
-        
-        init(handle: Handle) {
-            self.handle = handle
-        }
     }
 }
+
+// MARK: - RandomAccessCollection
 
 extension Statement.ColumnView: RandomAccessCollection {
     
@@ -33,7 +31,7 @@ extension Statement.ColumnView: RandomAccessCollection {
     }
     
     public var count: Int {
-        handle.columnCount
+        Int(handle.columnCount)
     }
     
     public var startIndex: Int { 0 }
@@ -42,7 +40,7 @@ extension Statement.ColumnView: RandomAccessCollection {
     
     public subscript(position: Int) -> Element {
         precondition(position >= 0 && position < count, "Index out of bounds")
-        return handle.columnName(at: position)
+        return handle.columnName(at: Int32(position))
     }
     
     public func index(after i: Int) -> Int {
