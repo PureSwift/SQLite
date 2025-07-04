@@ -28,6 +28,7 @@ public struct Row: ~Copyable {
 
 public extension Row {
     
+    /// `Sequence` view for convenience.
     var columns: Columns {
         Columns(
             row: index,
@@ -35,6 +36,28 @@ public extension Row {
             connection: connection
         )
     }
+    
+    var isEmpty: Bool {
+        count == 0
+    }
+    
+    var count: Int {
+        Int(statement.columnCount)
+    }
+    
+    var startIndex: Int { 0 }
+    
+    var endIndex: Int { count }
+    
+    /// Read the data type.
+    func readType(at index: Int) throws(SQLiteError) -> Column.ValueType {
+        try statement.readType(at: Int32(index), connection: connection).get()
+    }
+}
+
+// MARK: - Supporting Types
+
+public extension Row {
     
     struct Columns {
         
