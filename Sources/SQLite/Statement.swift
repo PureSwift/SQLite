@@ -170,4 +170,24 @@ internal extension Statement.Handle {
         }
         return .success(string ?? "")
     }
+    
+    func readInteger(at index: Int32, connection: Connection.Handle) -> Result<Int64, SQLiteError> {
+        let value = sqlite3_column_int64(pointer, index)
+        // check for errors
+        if let errorCode = connection.errorCode {
+            let error = connection.forceError(errorCode)
+            return .failure(error)
+        }
+        return .success(value)
+    }
+    
+    func readDouble(at index: Int32, connection: Connection.Handle) -> Result<Double, SQLiteError> {
+        let value = sqlite3_column_double(pointer, index)
+        // check for errors
+        if let errorCode = connection.errorCode {
+            let error = connection.forceError(errorCode)
+            return .failure(error)
+        }
+        return .success(value)
+    }
 }
