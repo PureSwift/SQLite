@@ -45,9 +45,9 @@ public extension Statement {
         handle.columnName(at: Int32(index))
     }
     
-    func bind(_ binding: Binding, at index: Int) {
+    func bind(_ binding: Binding, at index: Int) throws(SQLiteError) {
         let index = Int32(index)
-        return handle.bind(binding, at: index)
+        return try handle.bind(binding, at: index).get()
     }
 }
 
@@ -74,64 +74,66 @@ internal extension Statement.Handle {
         String(cString: sqlite3_column_name(pointer, index))
     }
     
-    func bindNull(at index: Int32) {
-        sqlite3_bind_null(pointer, index)
+    func bindNull(at index: Int32) -> Result<Void, SQLiteError> {
+        sqlite3_bind_null(pointer, index).value()
     }
     
     /// Binds a BLOB of length N that is filled with zeroes. A zeroblob uses a fixed amount of memory (just an integer to hold its size) while it is being processed.
     /// Zeroblobs are intended to serve as placeholders for BLOBs whose content is later written using incremental BLOB I/O routines.
     ///
     /// A negative value for the zeroblob results in a zero-length BLOB.
-    func bindZeroBlob(at index: Int32, count: Int32) {
-        sqlite3_bind_zeroblob(pointer, index, count)
+    func bindZeroBlob(at index: Int32, count: Int32) -> Result<Void, SQLiteError> {
+        sqlite3_bind_zeroblob(pointer, index, count).value()
     }
     
-    func bindBlob(_ rawBytes: UnsafeRawPointer, count: Int32, at index: Int32) {
-        sqlite3_bind_blob(pointer, index, rawBytes, count, SQLITE_TRANSIENT)
+    func bindBlob(_ rawBytes: UnsafeRawPointer, count: Int32, at index: Int32) -> Result<Void, SQLiteError> {
+        sqlite3_bind_blob(pointer, index, rawBytes, count, SQLITE_TRANSIENT).value()
     }
     
     @available(macOS 10.14.4, iOS 12.2, *)
-    func bindBlob(_ span: RawSpan, at index: Int32) {
+    func bindBlob(_ span: RawSpan, at index: Int32) -> Result<Void, SQLiteError> {
         let count = span.byteCount
-        span.withUnsafeBytes { buffer in
+        return span.withUnsafeBytes { buffer in
             bindBlob(buffer.baseAddress!, count: Int32(count), at: index)
         }
     }
     
-    func bindDouble(_ value: Double, at index: Int32) {
-        sqlite3_bind_double(pointer, index, value)
+    func bindDouble(_ value: Double, at index: Int32) -> Result<Void, SQLiteError> {
+        sqlite3_bind_double(pointer, index, value).value()
     }
     
-    func bindFloat(_ value: Float, at index: Int32) {
+    func bindFloat(_ value: Float, at index: Int32) -> Result<Void, SQLiteError> {
         bindDouble(Double(value), at: index)
     }
     
-    func bindInt(_ value: Int64, at index: Int32) {
-        sqlite3_bind_int64(pointer, index, value)
+    func bindInt(_ value: Int64, at index: Int32) -> Result<Void, SQLiteError> {
+        sqlite3_bind_int64(pointer, index, value).value()
     }
     
-    func bindInt(_ value: Int, at index: Int32) {
+    func bindInt(_ value: Int, at index: Int32) -> Result<Void, SQLiteError> {
         bindInt(Int64(value), at: index)
     }
     
-    func bindText(_ value: String, at index: Int32) {
-        sqlite3_bind_text(pointer, index, value, -1, SQLITE_TRANSIENT)
+    func bindText(_ value: String, at index: Int32) -> Result<Void, SQLiteError> {
+        sqlite3_bind_text(pointer, index, value, -1, SQLITE_TRANSIENT).value()
     }
     
-    func bind(_ binding: Binding, at index: Int32) {
+    func bind(_ binding: Binding, at index: Int32) -> Result<Void, SQLiteError> {
         switch binding {
         case .null:
-            bindNull(at: index)
+            return bindNull(at: index)
         case let .integer(value):
-            bindInt(value, at: index)
+            return bindInt(value, at: index)
         case let .double(value):
-            bindDouble(value, at: index)
+            return bindDouble(value, at: index)
         case let .text(value):
-            bindText(value, at: index)
+            return bindText(value, at: index)
         case let .blob(.zero(count)):
-            bindZeroBlob(at: index, count: count)
-        case let .blob(.pointer(pointer, count)):
-            bindBlob(pointer, count: count, at: index)
+            return bindZeroBlob(at: index, count: count)
+        case let .blob(.pointer(block)):
+            return block { buffer in
+                bindBlob(buffer.baseAddress!, count: Int32(buffer.count), at: index)
+            }
         }
     }
 }
