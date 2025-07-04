@@ -15,7 +15,10 @@ let package = Package(
         ),
         .testTarget(
             name: "SQLiteTests",
-            dependencies: ["SQLite"]
+            dependencies: ["SQLite"],
+            resources: [
+               .copy("TestFiles")
+           ]
         )
     ]
 )
