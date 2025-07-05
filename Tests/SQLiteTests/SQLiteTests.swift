@@ -95,11 +95,12 @@ import Testing
         let connection = try Connection(path: path)
         #expect(connection.filename == path)
         let sql = "SELECT * FROM locations WHERE location LIKE ? AND state = ? AND site_id = ?"
-        var statement = try Statement(sql, connection: connection)
-        // bind values
-        try statement.bind(.text("%Petro Carnesville%"), at: 1, connection: connection)
-        try statement.bind(.text("GA"), at: 2, connection: connection)
-        try statement.bind(.text("377"), at: 3, connection: connection)
+        let bindings = [
+            "%Petro Carnesville%",
+            "GA",
+            "377"
+        ].binding
+        let statement = try Statement.prepare(sql, bindings: bindings, connection: connection)
         // execute statement
         var results = [[String: String]]()
         try connection.execute(statement) { (row: consuming Row) throws(SQLiteError) -> () in
