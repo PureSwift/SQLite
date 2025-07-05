@@ -48,6 +48,20 @@ public extension Statement {
     func columnName(at index: Int) -> String {
         handle.columnName(at: Int32(index))
     }
+}
+
+public extension Statement {
+    
+    static func prepare(_ sql: String, bindings: [Binding], connection: borrowing Connection) throws(SQLiteError) -> Statement {
+        var statement = try Statement(sql, connection: connection)
+        for (index, binding) in bindings.enumerated() {
+            try statement.bind(binding, at: index + 1, connection: connection)
+        }
+        return statement
+    }
+}
+
+internal extension Statement {
     
     /// Bind data at the specified index.
     mutating func bind(_ binding: Binding, at index: Int, connection: borrowing Connection) throws(SQLiteError) {
