@@ -73,6 +73,13 @@ extension Sequence where Element: BindingConvertible {
     }
 }
 
+extension RawRepresentable where RawValue: BindingConvertible {
+    
+    public var binding: Binding {
+        rawValue.binding
+    }
+}
+
 extension Int64: BindingConvertible {
     
     public var binding: Binding {
