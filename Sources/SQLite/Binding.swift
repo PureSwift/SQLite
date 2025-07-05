@@ -54,7 +54,7 @@ public protocol BindingConvertible {
     var binding: Binding { get }
 }
 
-extension Optional where Wrapped: BindingConvertible {
+extension Optional: BindingConvertible where Wrapped: BindingConvertible {
     
     public var binding: Binding {
         switch self {
@@ -63,6 +63,13 @@ extension Optional where Wrapped: BindingConvertible {
         case .some(let wrapped):
             return wrapped.binding
         }
+    }
+}
+
+extension Sequence where Element: BindingConvertible {
+    
+    public var binding: [Binding] {
+        map { $0.binding }
     }
 }
 
