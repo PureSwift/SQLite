@@ -217,6 +217,170 @@ import Testing
         #expect((rows[0]["photo"] ?? nil)?.bytes == [1, 2, 3])
         #expect((rows[1]["photo"] ?? nil) == nil)
     }
+    
+    // MARK: - Blob
+
+    @Test func blobBytesRoundTrip() {
+        let blob = Blob(bytes: [42, 43, 44])
+        #expect(blob.bytes == [42, 43, 44])
+        #expect(blob.binding.bytes == [42, 43, 44])
+    }
+
+    @Test func blobEquality() {
+        let blob1 = Blob(bytes: [42, 42, 42])
+        let blob2 = Blob(bytes: [42, 42, 42])
+        let blob3 = Blob(bytes: [42, 42, 43])
+        #expect(Blob(bytes: []) == Blob(bytes: []))
+        #expect(blob1 == blob2)
+        #expect(blob1 != blob3)
+    }
+
+    // MARK: - prepare / run / scalar
+
+    @Test func preparePreparesAndReturnsStatements() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE users (id INTEGER, admin INTEGER)")
+        _ = try connection.prepare("SELECT * FROM users WHERE admin = 0")
+        _ = try connection.prepare("SELECT * FROM users WHERE admin = ?", [0.binding])
+    }
+
+    @Test func runPreparesRunsAndReturnsStatements() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE users (id INTEGER, admin INTEGER)")
+        try connection.run("SELECT * FROM users WHERE admin = 0")
+        try connection.run("SELECT * FROM users WHERE admin = ?", [0.binding])
+    }
+
+    @Test func scalarPreparesRunsAndReturnsScalarValues() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE users (id INTEGER, admin INTEGER)")
+        #expect(try connection.scalar("SELECT count(*) FROM users WHERE admin = 0")?.integer == 0)
+        #expect(try connection.scalar("SELECT count(*) FROM users WHERE admin = ?", [0.binding])?.integer == 0)
+    }
+
+    // MARK: - transaction
+
+    @Test func transactionBeginsAndCommitsTransactions() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE users (email TEXT)")
+
+        try connection.transaction {
+            try connection.run("INSERT INTO users (email) VALUES (?)", ["alice@example.com".binding])
+        }
+
+        #expect(try connection.scalar("SELECT count(*) FROM users")?.integer == 1)
+    }
+
+    @Test func transactionRollsBackIfBodyThrows() throws {
+        struct TestError: Error {}
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE users (email TEXT)")
+
+        do {
+            try connection.transaction {
+                try connection.run("INSERT INTO users (email) VALUES (?)", ["alice@example.com".binding])
+                throw TestError()
+            }
+            Issue.record("expected error")
+        } catch is TestError {
+            // expected
+        }
+
+        #expect(try connection.scalar("SELECT count(*) FROM users")?.integer == 0)
+    }
+
+    // MARK: - createFunction
+
+    @Test func createFunctionWithArguments() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.createFunction("hello", argumentCount: 1) { arguments in
+            guard case let .text(value) = arguments[0] else {
+                return .null
+            }
+            return .text("Hello, \(value)!")
+        }
+        #expect(try connection.scalar("SELECT hello('world')")?.string == "Hello, world!")
+        #expect(try connection.scalar("SELECT hello(NULL)") == nil)
+    }
+
+    @Test func createFunctionCreatesQuotableFunction() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.createFunction("hello world", argumentCount: 1) { arguments in
+            guard case let .text(value) = arguments[0] else {
+                return .null
+            }
+            return .text("Hello, \(value)!")
+        }
+        #expect(try connection.scalar("SELECT \"hello world\"('world')")?.string == "Hello, world!")
+        #expect(try connection.scalar("SELECT \"hello world\"(NULL)") == nil)
+    }
+
+    // MARK: - SchemaChanger
+
+    @Test func createTableWithForeignKeyReference() throws {
+        let connection = try Connection(path: ":memory:")
+        let schemaChanger = SchemaChanger(connection: connection)
+
+        try schemaChanger.create(table: "foo") { table in
+            table.add(column: ColumnDefinition(
+                name: "id", primaryKey: .init(autoIncrement: true), type: .INTEGER,
+                nullable: true, unique: false, defaultValue: .NULL, references: nil
+            ))
+        }
+        try schemaChanger.create(table: "bars") { table in
+            table.add(column: ColumnDefinition(
+                name: "id", primaryKey: .init(autoIncrement: true), type: .INTEGER,
+                nullable: true, unique: false, defaultValue: .NULL, references: nil
+            ))
+            table.add(column: ColumnDefinition(
+                name: "foo_id", primaryKey: nil, type: .INTEGER,
+                nullable: false, unique: false, defaultValue: .NULL,
+                references: .init(fromColumn: "foo_id", toTable: "foo", toColumn: "id")
+            ))
+        }
+
+        // verify the foreign key was actually declared, via SQLite's own introspection pragma
+        let statement = try connection.prepare("PRAGMA foreign_key_list(bars)")
+        let rows = try statement.rowDictionaries()
+        #expect(rows.count == 1)
+        let row = rows.first
+        #expect((row?["table"] ?? nil)?.string == "foo")
+        #expect((row?["to"] ?? nil)?.string == "id")
+        #expect((row?["from"] ?? nil)?.string == "foo_id")
+    }
+
+    @Test func createTableIfNotExists() throws {
+        let connection = try Connection(path: ":memory:")
+        let schemaChanger = SchemaChanger(connection: connection)
+
+        try schemaChanger.create(table: "foo") { table in
+            table.add(column: ColumnDefinition(
+                name: "id", primaryKey: .init(autoIncrement: true), type: .INTEGER,
+                nullable: true, unique: false, defaultValue: .NULL, references: nil
+            ))
+        }
+
+        // recreating with ifNotExists: true is a no-op, not an error
+        try schemaChanger.create(table: "foo", ifNotExists: true) { table in
+            table.add(column: ColumnDefinition(
+                name: "id", primaryKey: .init(autoIncrement: true), type: .INTEGER,
+                nullable: true, unique: false, defaultValue: .NULL, references: nil
+            ))
+        }
+
+        // recreating with ifNotExists: false throws, since the table already exists
+        do {
+            try schemaChanger.create(table: "foo", ifNotExists: false) { table in
+                table.add(column: ColumnDefinition(
+                    name: "id", primaryKey: .init(autoIncrement: true), type: .INTEGER,
+                    nullable: true, unique: false, defaultValue: .NULL, references: nil
+                ))
+            }
+            Issue.record("expected error")
+        } catch {
+            // expected
+        }
+    }
 }
 
 // MARK: - Supporting Functions
