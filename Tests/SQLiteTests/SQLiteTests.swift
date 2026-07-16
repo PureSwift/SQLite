@@ -14,8 +14,10 @@ import Testing
     }
     
     @Test func statementError() throws {
+        // a nonexistent file opened read-write can be created implicitly, so the
+        // failure only surfaces once an invalid statement is prepared against it.
         let path = "/tmp/invalid.sqlite"
-        let connection = try Connection(path: path, isReadOnly: true)
+        let connection = try Connection(path: path, isReadOnly: false)
         let sql = "SELECT COUNT(*) FROM abcdz"
         do {
             _ = try Statement(sql, connection: connection)
@@ -26,7 +28,20 @@ import Testing
             print(error)
             return
         }
-        
+
+        Issue.record("Error not thrown")
+    }
+
+    @Test func readOnlyMissingFile() throws {
+        // opening a nonexistent file read-only must fail at connection time,
+        // since SQLite cannot create it under `SQLITE_OPEN_READONLY`.
+        let path = "/tmp/does-not-exist-\(UUID().uuidString).sqlite"
+        do {
+            _ = try Connection(path: path, isReadOnly: true)
+        }
+        catch {
+            return
+        }
         Issue.record("Error not thrown")
     }
     
@@ -143,6 +158,64 @@ import Testing
             }
         }
         #expect(result == 42)
+    }
+
+    @Test func schemaAndConvenience() throws {
+        let connection = try Connection(path: ":memory:")
+        let schemaChanger = SchemaChanger(connection: connection)
+        try schemaChanger.create(table: "people") { table in
+            table.add(column: ColumnDefinition(
+                name: "id",
+                primaryKey: .init(autoIncrement: false),
+                type: .TEXT,
+                nullable: false,
+                unique: true,
+                defaultValue: .NULL,
+                references: nil
+            ))
+            table.add(column: ColumnDefinition(
+                name: "name",
+                primaryKey: nil,
+                type: .TEXT,
+                nullable: true,
+                unique: false,
+                defaultValue: .NULL,
+                references: nil
+            ))
+            table.add(column: ColumnDefinition(
+                name: "photo",
+                primaryKey: nil,
+                type: .BLOB,
+                nullable: true,
+                unique: false,
+                defaultValue: .NULL,
+                references: nil
+            ))
+        }
+
+        try connection.transaction {
+            let bindings1: [Binding?] = ["1".binding, "Alice".binding, Blob(bytes: [1, 2, 3]).binding]
+            try connection.run("INSERT INTO people (id, name, photo) VALUES (?, ?, ?)", bindings1)
+            let bindings2: [Binding?] = ["2".binding, "Bob".binding, nil]
+            try connection.run("INSERT INTO people (id, name, photo) VALUES (?, ?, ?)", bindings2)
+        }
+
+        let count = try connection.scalar("SELECT COUNT(*) FROM people")
+        #expect(count?.integer == 2)
+
+        let statement = try connection.prepare("SELECT id, name, photo FROM people ORDER BY id")
+        var rows = [[String: Binding?]]()
+        while let row = try statement.failableNext() {
+            var dictionary = [String: Binding?]()
+            for (index, name) in statement.columnNames.enumerated() {
+                dictionary[name] = row[index]
+            }
+            rows.append(dictionary)
+        }
+        #expect(rows.count == 2)
+        #expect((rows[0]["name"] ?? nil)?.string == "Alice")
+        #expect((rows[0]["photo"] ?? nil)?.bytes == [1, 2, 3])
+        #expect((rows[1]["photo"] ?? nil) == nil)
     }
 }
 
