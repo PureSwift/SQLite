@@ -1,11 +1,21 @@
 // swift-tools-version: 6.0
 import PackageDescription
+import CompilerPluginSupport
+import class Foundation.ProcessInfo
+
+// get environment variables
+let environment = ProcessInfo.processInfo.environment
+let dynamicLibrary = environment["SWIFT_BUILD_DYNAMIC_LIBRARY"] == "1"
+
+// force building as dynamic library
+let libraryType: PackageDescription.Product.Library.LibraryType? = dynamicLibrary ? .dynamic : nil
 
 let package = Package(
     name: "SQLite",
     products: [
         .library(
             name: "SQLite",
+            type: libraryType,
             targets: ["SQLite"]
         )
     ],
