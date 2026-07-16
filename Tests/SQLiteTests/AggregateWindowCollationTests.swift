@@ -52,7 +52,9 @@ import Testing
         #expect(try connection.scalar("SELECT my_sum(value) FROM t")?.integer == 0)
     }
 
-    @Test func windowFunctionComputesRunningTotal() throws {
+    @Test
+    @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, visionOS 1.0, *)
+    func windowFunctionComputesRunningTotal() throws {
         let connection = try Connection(path: ":memory:")
         try connection.run("CREATE TABLE t (position INTEGER, value INTEGER)")
         for (position, value) in [(1, 10), (2, 20), (3, 30)] {
