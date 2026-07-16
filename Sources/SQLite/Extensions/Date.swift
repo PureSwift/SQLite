@@ -5,8 +5,11 @@
 //  Created by Alsey Coleman Miller on 7/4/25.
 //
 
-#if canImport(Foundation)
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#elseif canImport(Foundation)
 import Foundation
+#endif
 
 internal extension Date {
     

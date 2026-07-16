@@ -5,7 +5,9 @@
 //  Created by Alsey Coleman Miller on 7/4/25.
 //
 
-#if canImport(Foundation)
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#elseif canImport(Foundation)
 import Foundation
 #endif
 
@@ -51,7 +53,7 @@ public extension Binding.DateFormat {
 
 // MARK: - Formatting
 
-#if canImport(Foundation)
+#if canImport(FoundationEssentials) || canImport(Foundation)
 
 public extension Binding {
     
