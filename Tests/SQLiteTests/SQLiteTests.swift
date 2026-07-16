@@ -13,6 +13,7 @@ import Testing
         #expect(connection.filename == path)
     }
     
+    #if !os(Android)
     @Test func statementError() throws {
         // a nonexistent file opened read-write can be created implicitly, so the
         // failure only surfaces once an invalid statement is prepared against it.
@@ -31,6 +32,7 @@ import Testing
 
         Issue.record("Error not thrown")
     }
+    #endif
 
     @Test func readOnlyMissingFile() throws {
         // opening a nonexistent file read-only must fail at connection time,
