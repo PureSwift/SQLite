@@ -15,6 +15,7 @@ import SwiftToolchainCSQLite
 import SQLite3
 #endif
 
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, visionOS 1.0, *)
 public extension Connection {
 
     /// Registers a custom SQL aggregate window function (e.g. for use with `OVER (...)`).
@@ -55,6 +56,7 @@ public extension Connection {
 
 /// Type-erases the generic `State` of `createWindowFunction` so it can be stored
 /// behind a single, non-generic `sqlite3_user_data` pointer.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, visionOS 1.0, *)
 internal final class WindowFunctionBox {
 
     let makeState: () -> AnyObject
@@ -94,6 +96,7 @@ internal final class WindowFunctionBox {
     }
 }
 
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, visionOS 1.0, *)
 internal extension Connection.Handle {
 
     func createWindowFunction<State>(
