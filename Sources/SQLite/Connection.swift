@@ -31,7 +31,7 @@ public struct Connection: ~Copyable {
         path: String,
         isReadOnly: Bool = false
     ) throws(SQLiteError) {
-        self.handle = try Handle.open(path: path).get()
+        self.handle = try Handle.open(path: path, readonly: isReadOnly).get()
     }
     
     deinit {
@@ -208,6 +208,6 @@ internal extension Connection.Handle {
     }
     
     var filename: String {
-        String(cString: sqlite3_db_filename(pointer, nil))
+        sqlite3_db_filename(pointer, nil).map { String(cString: $0) } ?? ""
     }
 }
