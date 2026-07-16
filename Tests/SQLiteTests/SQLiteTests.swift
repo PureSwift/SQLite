@@ -124,6 +124,26 @@ import Testing
         let expectedValue: [[String: String]] = [["preferred_parking": "N", "gas": "", "tot_dispensors": "12", "resspaces": "20", "tripak": "Y", "phonefax": "7063351984", "barber": "", "zipcode": "30521", "mailaddress": "10200 Old Federal Rd.", "permitservices": "", "travelstore": "", "longitude": "-83.3199", "mainfaxnumber": "706-335-1982", "mailaddress3": "", "shower_cost": "17", "laundry": "", "state": "GA", "reeferservices": "", "qsr": "", "chiropractor": "", "mobile_shower": "Y", "cbshop": "", "dieselongas": "", "latitude": "34.3481", "weighscales": "", "mainphonenumber": "706-335-1984", "satpumps": "", "prontopass": "", "lodging": "", "servicebays": "5", "speedzone": "", "restaurants": "", "directions": "I-85, Exit 160", "city": "Carnesville", "rvdump": "", "propane": "", "parkingspaces": "221", "location": "Petro Carnesville", "lounge": "", "roadservice": "", "servicecenter": "", "site_id": "377", "shower_ip": "10.200.77.120", "privateshowers": "18", "truckwash": "", "wireless": "", "location_id": "6377", "company": "P"]]
         #expect(expectedValue == results)
     }
+
+    @Test func customFunction() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.createFunction("double_it", argumentCount: 1, deterministic: true) { arguments in
+            .integer((arguments[0].integer ?? 0) * 2)
+        }
+        let statement = try Statement.prepare("SELECT double_it(21)", bindings: [], connection: connection)
+        var result: Int64 = 0
+        try connection.execute(statement) { (row: consuming Row) throws(SQLiteError) -> () in
+            result = try row.read(at: 0) { value in
+                switch value {
+                case let .integer(integer):
+                    return integer
+                default:
+                    return 0
+                }
+            }
+        }
+        #expect(result == 42)
+    }
 }
 
 // MARK: - Supporting Functions
