@@ -17,7 +17,7 @@ import Testing
     @Test func statementError() throws {
         // a nonexistent file opened read-write can be created implicitly, so the
         // failure only surfaces once an invalid statement is prepared against it.
-        let path = "/tmp/invalid.sqlite"
+        let path = NSTemporaryDirectory() + "invalid.sqlite"
         let connection = try Connection(path: path, isReadOnly: false)
         let sql = "SELECT COUNT(*) FROM abcdz"
         do {
@@ -37,7 +37,7 @@ import Testing
     @Test func readOnlyMissingFile() throws {
         // opening a nonexistent file read-only must fail at connection time,
         // since SQLite cannot create it under `SQLITE_OPEN_READONLY`.
-        let path = "/tmp/does-not-exist-\(UUID().uuidString).sqlite"
+        let path = NSTemporaryDirectory() + "does-not-exist-\(UUID().uuidString).sqlite"
         do {
             _ = try Connection(path: path, isReadOnly: true)
         }
