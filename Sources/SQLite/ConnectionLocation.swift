@@ -43,8 +43,20 @@ public extension Connection {
         /// See: <https://www.sqlite.org/uri.html>
         ///
         /// - Parameter filename: A URI filename
-        /// - Parameter parameters: optional query parameters
-        case uri(String, parameters: [URIQueryParameter] = [])
+        /// - Parameter parameters: query parameters
+        case uri(String, parameters: [URIQueryParameter])
+    }
+}
+
+public extension Connection.Location {
+
+    /// A database located at the given URI filename (or path), with no query parameters.
+    ///
+    /// See: <https://www.sqlite.org/uri.html>
+    ///
+    /// - Parameter filename: A URI filename
+    static func uri(_ filename: String) -> Connection.Location {
+        .uri(filename, parameters: [])
     }
 }
 
