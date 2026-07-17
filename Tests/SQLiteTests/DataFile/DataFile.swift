@@ -74,6 +74,10 @@ public extension DataFile {
 
         public var zipCode: String
 
+        public var latitude: Double
+
+        public var longitude: Double
+
         public var directions: String?
     }
 }
@@ -87,6 +91,8 @@ internal extension DataFile.Location {
         self.state = row.string("state") ?? ""
         self.city = row.string("city") ?? ""
         self.zipCode = row.string("zipcode") ?? ""
+        self.latitude = row.string("latitude").flatMap { Double($0) } ?? 0
+        self.longitude = row.string("longitude").flatMap { Double($0) } ?? 0
         self.directions = row.string("directions")
     }
 }
