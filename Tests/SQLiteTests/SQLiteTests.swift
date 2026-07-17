@@ -10,7 +10,7 @@ import Testing
             throw CocoaError(.fileNoSuchFile)
         }
         let connection = try Connection(path: path)
-        #expect(connection.filename == path)
+        #expect(connection.filename.replacingOccurrences(of: "\\", with: "/") == path)
     }
     
     #if !os(Android)
@@ -53,7 +53,7 @@ import Testing
             throw CocoaError(.fileNoSuchFile)
         }
         let connection = try Connection(path: path)
-        #expect(connection.filename == path)
+        #expect(connection.filename.replacingOccurrences(of: "\\", with: "/") == path)
         let sql = "SELECT COUNT(*) FROM site_amenities"
         let statement = try Statement(sql, connection: connection)
         var count = 0
@@ -76,7 +76,7 @@ import Testing
             throw CocoaError(.fileNoSuchFile)
         }
         let connection = try Connection(path: path)
-        #expect(connection.filename == path)
+        #expect(connection.filename.replacingOccurrences(of: "\\", with: "/") == path)
         let sql = "SELECT STATE_NM, STATE_AB FROM state_codes"
         let statement = try Statement(sql, connection: connection)
         // execute statement
@@ -110,7 +110,7 @@ import Testing
             throw CocoaError(.fileNoSuchFile)
         }
         let connection = try Connection(path: path)
-        #expect(connection.filename == path)
+        #expect(connection.filename.replacingOccurrences(of: "\\", with: "/") == path)
         let sql = "SELECT * FROM locations WHERE location LIKE ? AND state = ? AND site_id = ?"
         let bindings = [
             "%Petro Carnesville%",
