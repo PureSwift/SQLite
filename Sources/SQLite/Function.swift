@@ -107,7 +107,7 @@ internal extension Connection.Handle {
     }
 }
 
-fileprivate extension Binding {
+internal extension Binding {
 
     init(sqliteValue value: OpaquePointer?) {
         guard let value else {
@@ -139,7 +139,7 @@ fileprivate extension Binding {
     }
 }
 
-fileprivate extension OpaquePointer {
+internal extension OpaquePointer {
 
     /// Sets the result of a SQL function invocation, given `self` as the `sqlite3_context`.
     func setResult(_ binding: Binding) {

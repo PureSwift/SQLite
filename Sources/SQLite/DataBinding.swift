@@ -5,8 +5,13 @@
 //  Created by Alsey Coleman Miller on 7/4/25.
 //
 
-#if canImport(Foundation)
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#elseif canImport(Foundation)
 import Foundation
+#endif
+
+#if canImport(FoundationEssentials) || canImport(Foundation)
 
 extension Data: BindingConvertible {
     
