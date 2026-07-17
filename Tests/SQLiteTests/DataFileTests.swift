@@ -17,13 +17,13 @@ import Testing
         #expect(values.first?.id == "001")
         #expect(values.first?.name == "TA Ashland")
         #expect(values.first?.directions == "I-95 & Rt. 54, Exit 92")
-        #expect(values.count == 329)
+        #expect(values.count == 350)
     }
 
     @Test func amenities() throws {
         let file = try loadDataFile()
         let values = try file.fetchAmenities()
-        #expect(values.count == 206)
+        #expect(values.count == 218)
         #expect(values.first?.id == "A & W")
         #expect(values.first?.image == "aw.png")
         #expect(values.first?.descriptionText == "A&W All American Food")
@@ -35,7 +35,7 @@ import Testing
         #expect(values.first?.id == "001")
         #expect(values.first?.image == "cat.png")
         #expect(values.first?.fOrA == "A")
-        #expect(values.count == 5932)
+        #expect(values.count == 6099)
     }
 
     @Test func restaurants() throws {
@@ -51,8 +51,8 @@ import Testing
         let file = try loadDataFile()
         let configuration = try file.fetchConfiguration()
         #expect(configuration.count == 25)
-        #expect(configuration.databaseVersion == "1.5200")
-        #expect(configuration.activeDatabaseVersion == "1.5184")
+        #expect(configuration.databaseVersion == "1.6218")
+        #expect(configuration.activeDatabaseVersion == "1.6217")
         #expect(configuration.showDirections == true)
         #expect(configuration.privacyPolicy?.description == "http://www.ta-petro.com/privacy-policy")
         #expect(configuration["ludistance"] == "02/22/11 11:00:00")
@@ -80,7 +80,7 @@ import Testing
         #expect(values.first?.type == "tye")
         #expect(values.first?.value == "00")
         #expect(values.first?.text == "2000")
-        #expect(values.count == 324)
+        #expect(values.count == 336)
     }
 
     @Test func locationIDFilter() throws {
@@ -111,7 +111,7 @@ import Testing
             interstates: [],
             amenities: ["def25g.png"]
         )
-        #expect(locations.count == 13)
+        #expect(locations.count == 15)
         #expect(locations.first?.id == "259")
         #expect(locations.first?.state == "ND")
     }
