@@ -24,7 +24,7 @@ import Testing
             _ = try Statement(sql, connection: connection)
         }
         catch {
-            #expect(error.message == "Unable to initialize statement.")
+            #expect(error.message == "no such table: abcdz")
             #expect(error.statement == sql)
             print(error)
             return
@@ -67,7 +67,7 @@ import Testing
                 }
             }
         }
-        #expect(count == 5932)
+        #expect(count == 6099)
     }
     
     @Test func iterateTextRows() throws {

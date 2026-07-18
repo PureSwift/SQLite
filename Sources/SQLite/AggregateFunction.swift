@@ -133,7 +133,8 @@ internal extension Connection.Handle {
             }
         )
         guard resultCode == SQLITE_OK else {
-            Unmanaged<AggregateFunctionBox>.fromOpaque(context).release()
+            // sqlite3_create_function_v2 invokes the xDestroy callback when
+            // registration fails, so the box has already been released
             return check(resultCode)
         }
         return .success(())

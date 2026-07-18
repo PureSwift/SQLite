@@ -95,8 +95,8 @@ internal extension Connection.Handle {
             }
         )
         guard resultCode == SQLITE_OK else {
-            // release the retained box since registration failed and the destructor will not be called
-            Unmanaged<FunctionBox>.fromOpaque(context).release()
+            // sqlite3_create_function_v2 invokes the xDestroy callback when
+            // registration fails, so the box has already been released
             return check(resultCode)
         }
         return .success(())

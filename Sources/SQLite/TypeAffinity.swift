@@ -86,7 +86,7 @@ public extension TypeAffinity {
             self = .integer
         } else if ["CHAR", "CLOB", "TEXT"].first(where: {test.contains($0)}) != nil { // Rule 2
             self = .text
-        } else if string.contains("BLOB") { // Rule 3
+        } else if test.contains("BLOB") { // Rule 3
             self = .blob
         } else if ["REAL", "FLOA", "DOUB"].first(where: {test.contains($0)}) != nil { // Rule 4
             self = .real
