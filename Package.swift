@@ -24,7 +24,7 @@ let package = Package(
         // has no system SQLite, so this package's embedded copy is used instead.
         .package(
             url: "https://github.com/PureSwift/swift-sqlcipher",
-            branch: "main"
+            from: "0.1.0"
         )
     ],
     targets: [
