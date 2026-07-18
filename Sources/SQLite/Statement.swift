@@ -92,7 +92,8 @@ internal extension Statement.Handle {
         var pointer: OpaquePointer?
         let errorCode = sqlite3_prepare_v2(connection.pointer, sql, -1, &pointer, nil)
         guard let pointer else {
-            return .failure(SQLiteError(errorCode: SQLiteError.ErrorCode(errorCode), message: "Unable to initialize statement.", connection: connection.filename, statement: sql))
+            // surface SQLite's own diagnostic (e.g. "no such table: t") rather than a generic message
+            return .failure(connection.forceError(SQLiteError.ErrorCode(errorCode), statement: sql))
         }
         let handle = Statement.Handle(pointer: pointer)
         guard errorCode == SQLITE_OK else {
