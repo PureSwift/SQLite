@@ -192,13 +192,15 @@ import Testing
 
     // MARK: - Registration failures
 
-    // SQLite rejects functions with more than 127 arguments (SQLITE_MISUSE),
-    // exercising the cleanup path that releases the retained callback box.
+    // SQLite rejects functions with more arguments than SQLITE_MAX_FUNCTION_ARG,
+    // whose compile-time ceiling is 32767 (the default varies by version: 127
+    // for the system library, 1000 for newer embedded builds), exercising the
+    // failure path of registration.
 
     @Test func createFunctionWithTooManyArguments() throws {
         let connection = try Connection(path: ":memory:")
         #expect(throws: SQLiteError.self) {
-            try connection.createFunction("f", argumentCount: 200) { _ in .null }
+            try connection.createFunction("f", argumentCount: 32768) { _ in .null }
         }
     }
 
@@ -207,7 +209,7 @@ import Testing
         #expect(throws: SQLiteError.self) {
             try connection.createAggregateFunction(
                 "f",
-                argumentCount: 200,
+                argumentCount: 32768,
                 initialState: { Int64(0) },
                 step: { _, _ in },
                 final: { _ in .null }
@@ -222,7 +224,7 @@ import Testing
         #expect(throws: SQLiteError.self) {
             try connection.createWindowFunction(
                 "f",
-                argumentCount: 200,
+                argumentCount: 32768,
                 initialState: { Int64(0) },
                 step: { _, _ in },
                 inverse: { _, _ in },
