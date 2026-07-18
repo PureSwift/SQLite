@@ -171,7 +171,8 @@ internal extension Connection.Handle {
             }
         )
         guard resultCode == SQLITE_OK else {
-            Unmanaged<WindowFunctionBox>.fromOpaque(context).release()
+            // sqlite3_create_window_function invokes the xDestroy callback when
+            // registration fails, so the box has already been released
             return check(resultCode)
         }
         return .success(())
