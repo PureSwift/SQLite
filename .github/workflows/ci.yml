@@ -29,7 +29,7 @@ jobs:
       - name: Export coverage and enforce threshold
         run: Scripts/coverage.sh
         env:
-          COVERAGE_THRESHOLD: 85
+          COVERAGE_THRESHOLD: 90
       - name: Upload coverage to GitHub Code Quality
         uses: actions/upload-code-coverage@v1
         with:
