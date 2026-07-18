@@ -102,8 +102,9 @@ import Testing
         #expect(TypeAffinity("VARCHAR(255)") == .text)
         #expect(TypeAffinity("CLOB") == .text)
         #expect(TypeAffinity("text") == .text)
-        // Rule 3: BLOB
+        // Rule 3: BLOB (case-insensitive, like every other rule)
         #expect(TypeAffinity("BLOB") == .blob)
+        #expect(TypeAffinity("blob") == .blob)
         // Rule 4: REAL, FLOA, or DOUB
         #expect(TypeAffinity("REAL") == .real)
         #expect(TypeAffinity("FLOAT") == .real)
