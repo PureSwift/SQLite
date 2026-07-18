@@ -190,6 +190,56 @@ import Testing
         #expect(Binding.text("x").bytes == nil)
     }
 
+    // MARK: - Registration failures
+
+    // SQLite rejects functions with more than 127 arguments (SQLITE_MISUSE),
+    // exercising the cleanup path that releases the retained callback box.
+
+    @Test func createFunctionWithTooManyArguments() throws {
+        let connection = try Connection(path: ":memory:")
+        #expect(throws: SQLiteError.self) {
+            try connection.createFunction("f", argumentCount: 200) { _ in .null }
+        }
+    }
+
+    @Test func createAggregateFunctionWithTooManyArguments() throws {
+        let connection = try Connection(path: ":memory:")
+        #expect(throws: SQLiteError.self) {
+            try connection.createAggregateFunction(
+                "f",
+                argumentCount: 200,
+                initialState: { Int64(0) },
+                step: { _, _ in },
+                final: { _ in .null }
+            )
+        }
+    }
+
+    @Test
+    @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, visionOS 1.0, *)
+    func createWindowFunctionWithTooManyArguments() throws {
+        let connection = try Connection(path: ":memory:")
+        #expect(throws: SQLiteError.self) {
+            try connection.createWindowFunction(
+                "f",
+                argumentCount: 200,
+                initialState: { Int64(0) },
+                step: { _, _ in },
+                inverse: { _, _ in },
+                value: { _ in .null },
+                final: { _ in .null }
+            )
+        }
+    }
+
+    @Test func nilSQLiteValueIsNull() {
+        // SQLite never passes nil argument values, but the conversion tolerates it
+        guard case .null = Binding(sqliteValue: nil) else {
+            Issue.record("Expected .null for a nil sqlite3_value")
+            return
+        }
+    }
+
     // MARK: - Error paths
 
     @Test func bindBeyondParameterCount() throws {
@@ -230,6 +280,22 @@ import Testing
               case .failure = handle.readDouble(at: 0, connection: connection.handle),
               case .failure = handle.readBlobSize(at: 0, connection: connection.handle) else {
             Issue.record("Expected column reads to surface the connection's error code")
+            return
+        }
+    }
+
+    @Test func blobReadReportsStaleConnectionError() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE t (b BLOB)")
+        try connection.run("INSERT INTO t (b) VALUES (X'CAFE')")
+        let statement = try Statement("SELECT b FROM t", connection: connection)
+        #expect(try statement.handle.step(connection: connection.handle).get())
+        // the column pointer is valid, but a stale connection error still surfaces
+        #expect(throws: SQLiteError.self) {
+            _ = try Statement("SELECT * FROM missing_table", connection: connection)
+        }
+        guard case .failure = statement.handle.readBlob(at: 0, connection: connection.handle) else {
+            Issue.record("Expected blob read to surface the connection's error code")
             return
         }
     }
