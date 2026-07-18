@@ -28,7 +28,7 @@ public extension Connection {
         _ name: String,
         argumentCount: Int32? = nil,
         deterministic: Bool = false,
-        _ block: @escaping (borrowing [Binding]) -> Binding
+        _ block: @escaping (borrowing [Binding]) throws -> Binding
     ) throws(SQLiteError) {
         try handle.createFunction(
             name,
@@ -48,9 +48,9 @@ public extension Connection {
 
 fileprivate final class FunctionBox {
 
-    let block: (borrowing [Binding]) -> Binding
+    let block: (borrowing [Binding]) throws -> Binding
 
-    init(_ block: @escaping (borrowing [Binding]) -> Binding) {
+    init(_ block: @escaping (borrowing [Binding]) throws -> Binding) {
         self.block = block
     }
 }
@@ -61,7 +61,7 @@ internal extension Connection.Handle {
         _ name: String,
         argumentCount: Int32,
         deterministic: Bool,
-        block: @escaping (borrowing [Binding]) -> Binding
+        block: @escaping (borrowing [Binding]) throws -> Binding
     ) -> Result<Void, SQLiteError> {
         let box = FunctionBox(block)
         let context = Unmanaged.passRetained(box).toOpaque()
@@ -84,8 +84,12 @@ internal extension Connection.Handle {
                     let value = argv?[index]
                     return Binding(sqliteValue: value)
                 }
-                let result = box.block(arguments)
-                sqliteContext.setResult(result)
+                do {
+                    let result = try box.block(arguments)
+                    sqliteContext.setResult(result)
+                } catch {
+                    sqliteContext.setError(error)
+                }
             },
             nil,
             nil,
@@ -160,5 +164,11 @@ internal extension OpaquePointer {
                 return .success(())
             }
         }
+    }
+
+    /// Reports `error` as the result of a SQL function invocation, given `self` as the `sqlite3_context`.
+    func setError(_ error: Error) {
+        let message = String(describing: error)
+        sqlite3_result_error(self, message, -1)
     }
 }

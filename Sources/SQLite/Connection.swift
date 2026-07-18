@@ -72,6 +72,23 @@ public extension Connection {
     var filename: String {
         handle.filename
     }
+
+    /// Whether the connection is currently outside of an explicit transaction (i.e. in autocommit mode).
+    var isAutocommit: Bool {
+        handle.isAutocommit
+    }
+
+    /// Sets a busy timeout, causing operations on locked tables to retry for up to `milliseconds`
+    /// before returning `SQLITE_BUSY`, instead of failing immediately.
+    func setBusyTimeout(_ milliseconds: Int32) {
+        handle.setBusyTimeout(milliseconds)
+    }
+
+    /// Interrupts a long-running query on this connection from another thread, causing it to fail
+    /// with `SQLITE_INTERRUPT` as soon as possible.
+    func interrupt() {
+        handle.interrupt()
+    }
 }
 
 // MARK: - Methods
@@ -118,7 +135,10 @@ internal extension Connection {
 internal extension Connection.Handle {
     
     consuming func close() {
-        sqlite3_close(pointer)
+        // sqlite3_close_v2 allows the connection to be deallocated even if statements or
+        // blob handles created against it haven't been finalized/closed yet, deferring
+        // actual deallocation until they are.
+        sqlite3_close_v2(pointer)
     }
     
     static func open(path: String, readonly: Bool = false) -> Result<Connection.Handle, SQLiteError> {
@@ -209,5 +229,18 @@ internal extension Connection.Handle {
     
     var filename: String {
         sqlite3_db_filename(pointer, nil).map { String(cString: $0) } ?? ""
+    }
+
+    /// Whether the connection is currently outside of an explicit transaction (i.e. in autocommit mode).
+    var isAutocommit: Bool {
+        sqlite3_get_autocommit(pointer) != 0
+    }
+
+    func setBusyTimeout(_ milliseconds: Int32) {
+        sqlite3_busy_timeout(pointer, milliseconds)
+    }
+
+    func interrupt() {
+        sqlite3_interrupt(pointer)
     }
 }

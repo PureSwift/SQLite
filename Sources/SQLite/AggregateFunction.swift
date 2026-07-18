@@ -32,7 +32,7 @@ public extension Connection {
         deterministic: Bool = false,
         initialState: @escaping () -> State,
         step: @escaping (inout State, borrowing [Binding]) -> Void,
-        final: @escaping (State) -> Binding
+        final: @escaping (State) throws -> Binding
     ) throws(SQLiteError) {
         try handle.createAggregateFunction(
             name,
@@ -66,12 +66,12 @@ internal final class AggregateFunctionBox {
 
     let step: (AnyObject, borrowing [Binding]) -> Void
 
-    let final: (AnyObject) -> Binding
+    let final: (AnyObject) throws -> Binding
 
     init<State>(
         initialState: @escaping () -> State,
         step: @escaping (inout State, borrowing [Binding]) -> Void,
-        final: @escaping (State) -> Binding
+        final: @escaping (State) throws -> Binding
     ) {
         self.makeState = { AggregateStateBox(initialState()) }
         self.step = { boxed, arguments in
@@ -80,7 +80,7 @@ internal final class AggregateFunctionBox {
         }
         self.final = { boxed in
             let box = boxed as! AggregateStateBox<State>
-            return final(box.state)
+            return try final(box.state)
         }
     }
 }
@@ -93,7 +93,7 @@ internal extension Connection.Handle {
         deterministic: Bool,
         initialState: @escaping () -> State,
         step: @escaping (inout State, borrowing [Binding]) -> Void,
-        final: @escaping (State) -> Binding
+        final: @escaping (State) throws -> Binding
     ) -> Result<Void, SQLiteError> {
         let box = AggregateFunctionBox(initialState: initialState, step: step, final: final)
         let context = Unmanaged.passRetained(box).toOpaque()
@@ -125,7 +125,11 @@ internal extension Connection.Handle {
                 }
                 let functionBox = Unmanaged<AggregateFunctionBox>.fromOpaque(boxPointer).takeUnretainedValue()
                 let stateObject = sqliteContext.finalizeAggregateState() ?? functionBox.makeState()
-                sqliteContext.setResult(functionBox.final(stateObject))
+                do {
+                    sqliteContext.setResult(try functionBox.final(stateObject))
+                } catch {
+                    sqliteContext.setError(error)
+                }
             },
             { boxPointer in
                 guard let boxPointer else { return }

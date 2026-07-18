@@ -61,6 +61,54 @@ import Testing
         #expect(try connection.scalar("SELECT hex(make_zeroblob())")?.string == "0000")
     }
 
+    @Test func scalarFunctionThrowsReportsErrorToCaller() throws {
+        struct DivideByZero: Error, CustomStringConvertible {
+            var description: String { "cannot divide by zero" }
+        }
+        let connection = try Connection(path: ":memory:")
+        try connection.createFunction("safe_divide", argumentCount: 2) { arguments in
+            let divisor = arguments[1].integer ?? 0
+            guard divisor != 0 else { throw DivideByZero() }
+            return .integer((arguments[0].integer ?? 0) / divisor)
+        }
+        #expect(try connection.scalar("SELECT safe_divide(10, 2)")?.integer == 5)
+        do {
+            _ = try connection.scalar("SELECT safe_divide(10, 0)")
+            Issue.record("Expected safe_divide(10, 0) to throw")
+        } catch {
+            #expect(error.message == "cannot divide by zero")
+        }
+    }
+
+    @Test func aggregateFunctionFinalThrowsReportsErrorToCaller() throws {
+        struct EmptyGroup: Error, CustomStringConvertible {
+            var description: String { "group must not be empty" }
+        }
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE t (value INTEGER)")
+        try connection.createAggregateFunction(
+            "require_nonempty_sum",
+            argumentCount: 1,
+            initialState: { (Int64(0), false) },
+            step: { state, arguments in
+                state.0 += arguments[0].integer ?? 0
+                state.1 = true
+            },
+            final: { state throws in
+                guard state.1 else { throw EmptyGroup() }
+                return .integer(state.0)
+            }
+        )
+        try connection.run("INSERT INTO t (value) VALUES (5)")
+        #expect(try connection.scalar("SELECT require_nonempty_sum(value) FROM t")?.integer == 5)
+        do {
+            _ = try connection.scalar("SELECT require_nonempty_sum(value) FROM t WHERE 0")
+            Issue.record("Expected require_nonempty_sum over an empty group to throw")
+        } catch {
+            #expect(error.message == "group must not be empty")
+        }
+    }
+
     // MARK: - Collations
 
     @Test func removeCollation() throws {

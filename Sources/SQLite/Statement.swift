@@ -48,6 +48,24 @@ public extension Statement {
     func columnName(at index: Int) -> String {
         handle.columnName(at: Int32(index))
     }
+
+    /// The SQL text of the statement with bound parameters expanded to their values.
+    var expandedSQL: String? {
+        handle.expandedSQL
+    }
+}
+
+public extension Statement {
+
+    /// Resets the statement so it can be re-executed, without changing any of its bindings.
+    mutating func reset() {
+        handle.reset()
+    }
+
+    /// Clears all bindings on the statement, setting every parameter back to `NULL`.
+    mutating func clearBindings() {
+        handle.clearBindings()
+    }
 }
 
 public extension Statement {
@@ -106,7 +124,23 @@ internal extension Statement.Handle {
     var sql: String {
         String(cString: sqlite3_sql(pointer))
     }
-    
+
+    var expandedSQL: String? {
+        guard let cString = sqlite3_expanded_sql(pointer) else {
+            return nil
+        }
+        defer { sqlite3_free(cString) }
+        return String(cString: cString)
+    }
+
+    func reset() {
+        sqlite3_reset(pointer)
+    }
+
+    func clearBindings() {
+        sqlite3_clear_bindings(pointer)
+    }
+
     var columnCount: Int32 {
         sqlite3_column_count(pointer)
     }
