@@ -67,7 +67,7 @@ import Testing
                 }
             }
         }
-        #expect(count == 5932)
+        #expect(count == 6099)
     }
     
     @Test func iterateTextRows() throws {
