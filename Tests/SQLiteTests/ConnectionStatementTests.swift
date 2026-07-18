@@ -151,4 +151,76 @@ import Testing
             try connection.run("INSERT INTO t (value) VALUES (1)")
         }
     }
+
+    // MARK: - reset / clearBindings / expandedSQL
+
+    @Test func resetAllowsStatementReuse() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE t (value INTEGER)")
+        let statement = try Statement("INSERT INTO t (value) VALUES (?)", connection: connection)
+        let handle = statement.handle
+        try handle.bind(.integer(1), at: 1, connection: connection.handle).get()
+        _ = try handle.step(connection: connection.handle).get()
+        handle.reset()
+        try handle.bind(.integer(2), at: 1, connection: connection.handle).get()
+        _ = try handle.step(connection: connection.handle).get()
+        #expect(try connection.scalar("SELECT COUNT(*) FROM t")?.integer == 2)
+        #expect(try connection.scalar("SELECT SUM(value) FROM t")?.integer == 3)
+    }
+
+    @Test func clearBindingsResetsParametersToNull() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE t (value INTEGER)")
+        let statement = try Statement("INSERT INTO t (value) VALUES (?)", connection: connection)
+        let handle = statement.handle
+        try handle.bind(.integer(1), at: 1, connection: connection.handle).get()
+        handle.clearBindings()
+        _ = try handle.step(connection: connection.handle).get()
+        #expect(try connection.scalar("SELECT value FROM t")?.integer == nil)
+        #expect(try connection.scalar("SELECT value IS NULL FROM t")?.integer == 1)
+    }
+
+    @Test func expandedSQLSubstitutesBoundValues() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE t (value TEXT)")
+        let statement = try Statement.prepare(
+            "INSERT INTO t (value) VALUES (?)",
+            bindings: [.text("hello")],
+            connection: connection
+        )
+        #expect(statement.expandedSQL == "INSERT INTO t (value) VALUES ('hello')")
+    }
+
+    // MARK: - Interrupt / busy timeout / autocommit
+
+    @Test func autocommitReflectsTransactionState() throws {
+        let connection = try Connection(path: ":memory:")
+        #expect(connection.isAutocommit == true)
+        try connection.run("BEGIN")
+        #expect(connection.isAutocommit == false)
+        try connection.run("COMMIT")
+        #expect(connection.isAutocommit == true)
+    }
+
+    @Test func interruptFailsPendingStep() throws {
+        let connection = try Connection(path: ":memory:")
+        // a recursive query that yields many rows, so a second step is still pending
+        // when interrupt() is called between the first and second sqlite3_step calls
+        let statement = try Statement(
+            "WITH RECURSIVE cnt(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM cnt WHERE x < 1000000) SELECT x FROM cnt",
+            connection: connection
+        )
+        let handle = statement.handle
+        #expect(try handle.step(connection: connection.handle).get())
+        connection.interrupt()
+        #expect(throws: SQLiteError.self) {
+            _ = try handle.step(connection: connection.handle).get()
+        }
+    }
+
+    @Test func setBusyTimeoutDoesNotThrow() throws {
+        let connection = try Connection(path: ":memory:")
+        // no observable state to assert on beyond the call succeeding
+        connection.setBusyTimeout(50)
+    }
 }
