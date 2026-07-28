@@ -16,9 +16,23 @@ DSL.
 - A minimal schema (DDL) builder — `CREATE TABLE`, primary/foreign keys, unique,
   default, nullable
 - `Blob`, `Data`, `UUID`, and `Date` binding conversions
-- Cross-platform: uses the system `SQLite3` on Apple platforms and the embedded
+- Cross-platform: uses the system `SQLite3` on Apple platforms, the system
+  `libsqlite3` on Linux, and the embedded
   [swift-sqlcipher](https://github.com/PureSwift/swift-sqlcipher) build
-  everywhere else (Linux, Android, Windows, WASI, OpenBSD)
+  everywhere else (Android, Windows, WASI, OpenBSD)
+
+## Requirements
+
+On Linux the package links the system SQLite, so the development package must be
+installed:
+
+```sh
+apt-get install libsqlite3-dev pkg-config   # Debian / Ubuntu
+dnf install sqlite-devel pkgconf-pkg-config # Fedora / RHEL
+```
+
+If it isn't available, build with `SWIFT_BUILD_SQLCIPHER=1` to use the embedded
+SQLite build on Linux instead.
 
 ## Installation
 
