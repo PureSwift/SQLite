@@ -6,17 +6,17 @@ import class Foundation.ProcessInfo
 // get environment variables
 let environment = ProcessInfo.processInfo.environment
 let dynamicLibrary = environment["SWIFT_BUILD_DYNAMIC_LIBRARY"] == "1"
-let embeddedSQLite = environment["SWIFT_BUILD_SQLCIPHER"] == "1"
+let systemSQLite = environment["SWIFT_BUILD_SYSTEM_SQLITE"] == "1"
 
 // force building as dynamic library
 let libraryType: PackageDescription.Product.Library.LibraryType? = dynamicLibrary ? .dynamic : nil
 
-// Linux links the system SQLite (`libsqlite3-dev` / `sqlite-devel`) by default.
-// Set `SWIFT_BUILD_SQLCIPHER=1` to use the embedded build there instead, e.g.
-// when the development package isn't available.
-let embeddedSQLitePlatforms: [Platform] = embeddedSQLite
-    ? [.linux, .android, .windows, .wasi, .openbsd]
-    : [.android, .windows, .wasi, .openbsd]
+// Linux uses the embedded SQLite build by default, like the other non-Darwin
+// platforms. Set `SWIFT_BUILD_SYSTEM_SQLITE=1` to link the system SQLite
+// (`libsqlite3-dev` / `sqlite-devel`) there instead.
+let embeddedSQLitePlatforms: [Platform] = systemSQLite
+    ? [.android, .windows, .wasi, .openbsd]
+    : [.linux, .android, .windows, .wasi, .openbsd]
 
 var sqliteDependencies: [Target.Dependency] = [
     .product(
@@ -28,7 +28,7 @@ var sqliteDependencies: [Target.Dependency] = [
 
 var sqliteTargets: [Target] = []
 
-if !embeddedSQLite {
+if systemSQLite {
     sqliteDependencies.append(
         .target(name: "CSQLite", condition: .when(platforms: [.linux]))
     )
@@ -54,9 +54,9 @@ let package = Package(
         )
     ],
     dependencies: [
-        // Darwin platforms link the system SQLite3.framework and Linux links the
-        // system libsqlite3; the remaining platforms have no system SQLite, so
-        // this package's embedded copy is used instead.
+        // Darwin platforms link the system SQLite3.framework; everywhere else
+        // uses this package's embedded copy, unless Linux opts into the system
+        // libsqlite3 with `SWIFT_BUILD_SYSTEM_SQLITE=1`.
         .package(
             url: "https://github.com/PureSwift/swift-sqlcipher",
             from: "0.1.0"
