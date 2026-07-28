@@ -18,7 +18,24 @@ DSL.
 - `Blob`, `Data`, `UUID`, and `Date` binding conversions
 - Cross-platform: uses the system `SQLite3` on Apple platforms and the embedded
   [swift-sqlcipher](https://github.com/PureSwift/swift-sqlcipher) build
-  everywhere else (Linux, Android, Windows, WASI, OpenBSD)
+  everywhere else (Linux, Android, Windows, WASI, OpenBSD), with Linux able to
+  link the system `libsqlite3` instead
+
+## System SQLite on Linux
+
+Linux uses the embedded SQLite build by default. To link the system SQLite
+instead, install the development package and build with
+`SWIFT_BUILD_SYSTEM_SQLITE=1`:
+
+```sh
+apt-get install libsqlite3-dev pkg-config   # Debian / Ubuntu
+dnf install sqlite-devel pkgconf-pkg-config # Fedora / RHEL
+
+SWIFT_BUILD_SYSTEM_SQLITE=1 swift build
+```
+
+`pkg-config` is required in addition to the headers, since the system library
+target resolves its flags through it.
 
 ## Installation
 

@@ -58,6 +58,25 @@ jobs:
       - name: Test
         run: swift test -v
 
+  linux-system-sqlite:
+    name: Linux (system SQLite)
+    runs-on: ubuntu-latest
+    container: swift:6.3.3
+    env:
+      SWIFT_BUILD_SYSTEM_SQLITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SQLite
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends libsqlite3-dev pkg-config
+      - name: Swift version
+        run: swift --version
+      - name: Build
+        run: swift build -v
+      - name: Test
+        run: swift test -v
+
   android:
     runs-on: ubuntu-latest
     steps:
