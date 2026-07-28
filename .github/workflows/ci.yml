@@ -51,6 +51,10 @@ jobs:
     container: swift:6.3.3
     steps:
       - uses: actions/checkout@v4
+      - name: Install SQLite
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends libsqlite3-dev pkg-config
       - name: Swift version
         run: swift --version
       - name: Build
