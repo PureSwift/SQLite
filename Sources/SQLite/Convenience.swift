@@ -23,7 +23,15 @@ public extension Connection {
     }
 
     /// Run `body` inside a `BEGIN`/`COMMIT` transaction, rolling back if it throws.
+    ///
+    /// Inside another transaction, `body` runs in a savepoint instead: if it throws,
+    /// only its own changes are undone, and the ones it makes are kept only if the
+    /// enclosing transaction commits. So a caller can group operations that each use
+    /// a transaction of their own into one that's all or nothing.
     func transaction<T>(_ body: () throws -> T) throws -> T {
+        guard isAutocommit else {
+            return try savepoint(body)
+        }
         try run("BEGIN")
         do {
             let result = try body()
@@ -31,6 +39,23 @@ public extension Connection {
             return result
         } catch {
             try? run("ROLLBACK")
+            throw error
+        }
+    }
+
+    /// Run `body` inside a savepoint, rolling back to it if it throws.
+    ///
+    /// Outside a transaction, a savepoint starts one and commits it when released.
+    func savepoint<T>(_ body: () throws -> T) throws -> T {
+        // A savepoint's name refers to the innermost one, so nested calls can share it.
+        try run("SAVEPOINT \"transaction\"")
+        do {
+            let result = try body()
+            try run("RELEASE \"transaction\"")
+            return result
+        } catch {
+            try? run("ROLLBACK TO \"transaction\"")
+            try? run("RELEASE \"transaction\"")
             throw error
         }
     }
