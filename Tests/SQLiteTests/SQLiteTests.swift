@@ -291,6 +291,85 @@ import Testing
         #expect(try connection.scalar("SELECT count(*) FROM users")?.integer == 0)
     }
 
+    @Test func nestedTransactionCommitsWithTheOuterOne() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE users (email TEXT)")
+
+        try connection.transaction {
+            try connection.run("INSERT INTO users (email) VALUES (?)", ["alice@example.com".binding])
+            try connection.transaction {
+                try connection.run("INSERT INTO users (email) VALUES (?)", ["betty@example.com".binding])
+            }
+            let isAutocommit = connection.isAutocommit
+            #expect(isAutocommit == false)
+        }
+
+        let committed = connection.isAutocommit
+        #expect(committed)
+        #expect(try connection.scalar("SELECT count(*) FROM users")?.integer == 2)
+    }
+
+    @Test func nestedTransactionIsUndoneWhenTheOuterOneRollsBack() throws {
+        struct TestError: Error {}
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE users (email TEXT)")
+
+        do {
+            try connection.transaction {
+                try connection.transaction {
+                    try connection.run("INSERT INTO users (email) VALUES (?)", ["alice@example.com".binding])
+                }
+                throw TestError()
+            }
+            Issue.record("expected error")
+        } catch is TestError {
+            // expected
+        }
+
+        let committed = connection.isAutocommit
+        #expect(committed)
+        #expect(try connection.scalar("SELECT count(*) FROM users")?.integer == 0)
+    }
+
+    @Test func nestedTransactionRollsBackOnlyItsOwnChanges() throws {
+        struct TestError: Error {}
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE users (email TEXT)")
+
+        try connection.transaction {
+            try connection.run("INSERT INTO users (email) VALUES (?)", ["alice@example.com".binding])
+            do {
+                try connection.transaction {
+                    try connection.run("INSERT INTO users (email) VALUES (?)", ["betty@example.com".binding])
+                    throw TestError()
+                }
+                Issue.record("expected error")
+            } catch is TestError {
+                // expected
+            }
+            let isAutocommit = connection.isAutocommit
+            #expect(isAutocommit == false)
+        }
+
+        #expect(try connection.scalar("SELECT email FROM users")?.string == "alice@example.com")
+        #expect(try connection.scalar("SELECT count(*) FROM users")?.integer == 1)
+    }
+
+    @Test func transactionNestsInsideAnExplicitBegin() throws {
+        let connection = try Connection(path: ":memory:")
+        try connection.run("CREATE TABLE users (email TEXT)")
+
+        try connection.run("BEGIN")
+        try connection.transaction {
+            try connection.run("INSERT INTO users (email) VALUES (?)", ["alice@example.com".binding])
+        }
+        let isAutocommit = connection.isAutocommit
+        #expect(isAutocommit == false)
+        try connection.run("ROLLBACK")
+
+        #expect(try connection.scalar("SELECT count(*) FROM users")?.integer == 0)
+    }
+
     // MARK: - createFunction
 
     @Test func createFunctionWithArguments() throws {
